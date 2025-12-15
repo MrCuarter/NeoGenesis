@@ -1,7 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { CharacterParams, GeneratedData } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Forzamos a TypeScript a confiar en que la API Key existe y es un texto
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
 export const generatePrompt = async (params: CharacterParams): Promise<GeneratedData> => {
   const modelId = "gemini-2.5-flash";
