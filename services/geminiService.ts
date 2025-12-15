@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { CharacterParams, GeneratedData } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const generatePrompt = async (params: CharacterParams): Promise<GeneratedData> => {
   const modelId = "gemini-2.5-flash";

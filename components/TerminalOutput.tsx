@@ -48,7 +48,7 @@ export const TerminalOutput: React.FC<TerminalOutputProps> = ({ data, loading })
             {/* Positive Prompt */}
             <div className="space-y-2">
               <div className="flex justify-between items-center border-b border-slate-800 pb-1">
-                 <span className="text-green-400 font-mono text-xs font-bold">>> PROMPT PRINCIPAL</span>
+                 <span className="text-green-400 font-mono text-xs font-bold">&gt;&gt; PROMPT PRINCIPAL</span>
                  <button 
                   onClick={() => copyToClipboard(data!.prompt, true)}
                   className="text-xs bg-slate-800 hover:bg-cyan-700 hover:text-white text-cyan-400 px-2 py-1 rounded transition-colors uppercase font-mono"
@@ -64,7 +64,7 @@ export const TerminalOutput: React.FC<TerminalOutputProps> = ({ data, loading })
             {/* Negative Prompt */}
             <div className="space-y-2">
               <div className="flex justify-between items-center border-b border-slate-800 pb-1">
-                 <span className="text-red-400 font-mono text-xs font-bold">>> NEGATIVE PROMPT</span>
+                 <span className="text-red-400 font-mono text-xs font-bold">&gt;&gt; NEGATIVE PROMPT</span>
                  <button 
                   onClick={() => copyToClipboard(data!.negativePrompt, false)}
                   className="text-xs bg-slate-800 hover:bg-red-900 hover:text-white text-red-400 px-2 py-1 rounded transition-colors uppercase font-mono"
