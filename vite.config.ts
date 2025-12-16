@@ -4,7 +4,8 @@ import react from '@vitejs/plugin-react';
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Carga variables desde archivos .env
-  const env = loadEnv(mode, process.cwd(), '');
+  // Fix: Cast process to any to avoid type error if @types/node is missing
+  const env = loadEnv(mode, (process as any).cwd(), '');
   
   // CRÍTICO: En Vercel, las variables están en process.env, no siempre en el objeto env de loadEnv.
   // Buscamos primero en el proceso del sistema (Vercel), luego en .env, o devolvemos cadena vacía.

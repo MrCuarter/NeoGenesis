@@ -14,7 +14,7 @@ const getAI = () => {
   } else if (apiKey === "") {
     console.error("DEBUG: La API Key es un string vacío. Vite no la ha inyectado.");
   } else {
-    console.log("DEBUG: API Key detectada. Longitud:", apiKey.length, "Últimos 4 chars:", apiKey.slice(-4));
+    // console.log("DEBUG: API Key detectada.");
   }
 
   // Verificación estricta
@@ -117,7 +117,7 @@ export const generatePrompt = async (params: CharacterParams): Promise<Generated
 };
 
 /**
- * PROTOCOLO PSYCHE 2.1: Genera 4 Hojas de Modelo maestras (Incluyendo INSIGNIA/TOKEN).
+ * PROTOCOLO PSYCHE 3.0: Genera 5 Hojas Maestras con estricto control de consistencia.
  */
 export const generateExpressionSheet = async (params: CharacterParams): Promise<ExpressionEntry[]> => {
   let ai;
@@ -129,47 +129,68 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
   }
 
   const isMJ = params.promptFormat === 'midjourney';
-  const aspectRatio = "--ar 3:2"; // Apaisado forzado para Character Sheets
+  const aspectRatio = "--ar 3:2"; 
 
   // Formateamos las reglas según el modo elegido
   const formatRules = isMJ 
-    ? `SI usa el formato Midjourney: Añade "${aspectRatio} --v 6.0" al final de cada prompt (EXCEPTO en la Insignia donde puedes usar --ar 1:1 si lo ves mejor, pero por defecto mantén consistencia). Empieza con "/imagine prompt:".`
-    : `SI usa el formato GENÉRICO: NO uses comandos como /imagine. Escribe una descripción detallada en inglés.`;
+    ? `FORMATO MIDJOURNEY: Añade "${aspectRatio} --v 6.0" al final. Empieza con "/imagine prompt:". Usa parámetros --no (negative prompt) al final.`
+    : `FORMATO GENÉRICO: Descripción detallada en inglés sin comandos de Discord.`;
 
   const systemInstruction = `
-    Eres un Director de Arte de Concept Art. Tu objetivo es crear un "Character Design Kit" compuesto por EXACTAMENTE 4 PROMPTS MAESTROS.
+    Eres un Director de Arte de Concept Art (Protocolo PSYCHE v3.0).
+    Tu objetivo es crear un "Character Design Kit" compuesto por EXACTAMENTE 5 PROMPTS MAESTROS.
     
-    ESTRATEGIA DE DISEÑO (CRÍTICO: EVITAR SUPERPOSICIÓN):
-    1. Define internamente la apariencia exacta (Core Appearance) basada en los inputs.
-    2. Aplica esa apariencia a 4 situaciones distintas (Sheets).
-    3. Fondo: SIEMPRE "Neutral Solid White Background" para fácil recorte.
-    
-    LOS 4 PROMPTS DEBEN SER:
-    1. "ARCHITECTURE VIEW": Character Sheet clásico. Front View, Side View, Back View. Usa keywords: "Triptych layout, distinct separation, white space in between".
-    2. "CINEMATIC CUTS": Composición artística. 3/4 Portrait, Extreme Close-up (ojos/cara), Dynamic Action Pose. Usa keywords: "Split screen composition, distinct panels, collage style".
-    3. "EMOTIONAL RANGE": Full Body Character sheet mostrando 3 emociones distintas contrastantes (ej: Enfado, Miedo, Pícaro/Travieso).
-    4. "RPG TOKEN / INSIGNIA": Un diseño específico para Avatar o Token de VTT (Roll20/Foundry).
-       - Primer plano (Head & Shoulders) dentro de un MARCO/BORDE DECORATIVO circular o hexagonal.
-       - El estilo del borde debe coincidir con el personaje (ej: Cyberpunk -> Borde de metal y neón; Fantasía -> Borde de oro, madera o piedra rúnica).
-       - Keywords: "RPG Token design, circular badge, thick stylized border, sticker style, white background, vector style rendering, isolated".
+    ESTRATEGIA DE CONSISTENCIA GLOBAL (ADN VISUAL):
+    Debes definir internamente un "Visual DNA" y aplicarlo a TODOS los prompts para evitar alucinaciones entre imágenes.
+    1. ESTILO BASE: ${params.style} (Pero fuerza siempre: "clean linework, high definition, no noise").
+    2. COLORES: ${params.colors.join(", ")} (Mantén esta paleta estricta).
+    3. ANATOMÍA: ${params.bodyType}, ${params.gender}, ${params.race}. (Fuerza: "identical proportions across all images").
+    4. FONDO: SIEMPRE "pure solid white background (#FFFFFF), no shadows, no gradients, subject fully isolated, cutout-ready".
+
+    LOS 5 PROMPTS MAESTROS:
+    1. "ARCHITECTURE VIEW" (Referencia Técnica):
+       - Triptych layout: Front View, Side View, Back View.
+       - Neutral expression. Arms slightly away (A-Pose).
+       - Keywords: "Model sheet, technical drawing layout, distinct separation".
+
+    2. "CINEMATIC NARRATIVE" (Lenguaje Corporal):
+       - Solo Busto/Medio Cuerpo.
+       - Acción sutil relacionada con su rol (${params.role}).
+       - Keywords: "Cinematic lighting, depth of field, focused, character portrait".
+
+    3. "EMOTIONAL RANGE" (Expresividad):
+       - Full body character showing 3 distinct contrasting emotions (e.g., Angry, Happy, Surprised).
+       - Same pose base, only face and gesture changes.
+       - Keywords: "Facial expression sheet, emotion study".
+
+    4. "RPG TOKEN / INSIGNIA" (Uso en VTT):
+       - Head & Shoulders inside a DECORATIVE BORDER (Circular/Hexagonal).
+       - Stylized border matching character theme (Metal/Gold/Magic).
+       - Optimized for small scale readability (High contrast).
+       - Keywords: "RPG Token, sticker style, vector rendering, thick border".
+
+    5. "VICTORY POSE" (Iconic/Promotional):
+       - Full body, dynamic victory or confident pose.
+       - NO background environment. Use ABSTRACT elements only (glow, particles, symbol) behind character.
+       - Keywords: "Hero shot, promotional art, dynamic angle, particle effects".
+
+    EXCLUSIONES GLOBALES (Negative Prompt Implicito):
+    - No background scenes, no props lying around, no text, no logos, no extra characters, no motion blur, no deformation.
 
     REGLAS TÉCNICAS:
     - Idioma: Inglés.
-    - Estilo: Concept Art, Model Sheet, High definition.
-    - Formato Salida: Array de Objetos JSON.
+    - Output: Array de Objetos JSON.
     - ${formatRules}
   `;
 
   const userPrompt = `
-    Datos del Personaje:
-    - Raza/Rol: ${params.race} ${params.role}
-    - Género/Edad: ${params.gender}, ${params.age}
-    - Cuerpo: ${params.bodyType}
-    - Estilo: ${params.style}
-    - Colores: ${params.colors.join(", ")}
-    - Detalles Clave: ${params.details || "Inventa detalles coherentes de ropa y accesorios"}
+    Genera el Kit de Diseño (5 Prompts) para:
+    - Personaje: ${params.race} ${params.role} (${params.subRole})
+    - Apariencia: ${params.age}, ${params.skinTone}
+    - Estilo Visual: ${params.style}
+    - Detalles Clave: ${params.details}
     
-    Genera los 4 prompts maestros descritos en las instrucciones (Architecture, Cinematic, Emotions, Insignia).
+    Asegúrate de que los 5 prompts compartan el mismo ADN VISUAL descrito en las instrucciones.
   `;
 
   const responseSchema: Schema = {
@@ -177,8 +198,8 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
     items: {
       type: Type.OBJECT,
       properties: {
-        label: { type: Type.STRING, description: "Título del Sheet (ej: RPG TOKEN / INSIGNIA)" },
-        prompt: { type: Type.STRING, description: "El prompt completo." }
+        label: { type: Type.STRING, description: "Título del Sheet (ej: VICTORY POSE)" },
+        prompt: { type: Type.STRING, description: "El prompt completo incluyendo parámetros técnicos." }
       },
       required: ["label", "prompt"]
     }
@@ -202,6 +223,75 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
 
   } catch (error) {
     console.error("Error generating expression sheet:", error);
+    throw error;
+  }
+};
+
+/**
+ * PROTOCOLO INVENTARIO: Genera un Sprite Sheet de objetos (Assets).
+ */
+export const generateInventoryPrompt = async (params: CharacterParams): Promise<GeneratedData> => {
+  let ai;
+  try {
+    ai = getAI();
+  } catch (e: any) {
+    console.error("Failed to initialize AI:", e);
+    throw new Error(e.message);
+  }
+
+  const isMJ = params.promptFormat === 'midjourney';
+  // Asset sheet suele funcionar mejor apaisado para tener espacio
+  const assetRatio = "--ar 3:2"; 
+
+  const systemInstruction = `
+    Eres un Diseñador de Assets de Videojuegos (Game Asset Designer).
+    Tu tarea es crear un PROMPT para generar una "Hoja de Inventario" (Sprite Sheet) con los objetos que llevaría el personaje descrito.
+    
+    ESTILO DE DISEÑO (CRÍTICO):
+    - TÉCNICA: "Knolling photography" o "Flat Lay". Objetos organizados en una cuadrícula invisible o líneas paralelas.
+    - SEPARACIÓN: Los objetos NO deben tocarse ni solaparse (para poder recortarlos fácilmente en Photoshop).
+    - FONDO: "Solid White Background" o "Solid Neutral Hex Background".
+    - CONTENIDO: 6 a 10 objetos relevantes para la clase/rol del personaje (armas, pociones, gadgets, libros, munición, comida, herramientas).
+    - ESTILO VISUAL: Debe coincidir EXACTAMENTE con el estilo del personaje (ej: si es Cyberpunk, los objetos son neón/tech; si es Fantasía, son madera/acero/magia).
+
+    FORMATO:
+    - ${isMJ ? `Empieza con "/imagine prompt:". Termina con "${assetRatio} --v 6.0". Usa keywords como "game assets sprite sheet, isolated, vector style".` : "Descripción detallada para Stable Diffusion/DALL-E."}
+  `;
+
+  const userPrompt = `
+    Personaje: ${params.race} ${params.role} (${params.subRole}).
+    Estilo Visual: ${params.style}.
+    Colores: ${params.colors.join(", ")}.
+    
+    Genera un prompt para una HOJA DE INVENTARIO con el equipamiento típico de este personaje.
+    Output JSON.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: modelId,
+      contents: userPrompt,
+      config: {
+        systemInstruction: systemInstruction,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            prompt: { type: Type.STRING, description: "Prompt para generar la hoja de inventario." },
+            negativePrompt: { type: Type.STRING, description: "Negative prompt (blur, crop, hand, fingers, text)." }
+          },
+          required: ["prompt", "negativePrompt"]
+        },
+      },
+    });
+
+    const jsonText = response.text;
+    if (!jsonText) throw new Error("No response text from Gemini");
+
+    return JSON.parse(jsonText) as GeneratedData;
+
+  } catch (error) {
+    console.error("Error generating inventory:", error);
     throw error;
   }
 };

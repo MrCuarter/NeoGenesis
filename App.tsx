@@ -10,7 +10,7 @@ import { QuickDesignWizard } from './components/QuickDesignWizard';
 import { Logo } from './components/Logo';
 import { AssistantHud } from './components/AssistantHud';
 import { HistorySidebar } from './components/HistorySidebar'; // New component
-import { generatePrompt, generateExpressionSheet } from './services/geminiService';
+import { generatePrompt, generateExpressionSheet, generateInventoryPrompt } from './services/geminiService'; // Added generateInventoryPrompt
 import { buildLocalPrompt } from './services/promptBuilder'; 
 import { CharacterParams, GeneratedData, LoadingState, Language, ExpressionEntry } from './types';
 import * as C from './constants';
@@ -55,6 +55,9 @@ const App: React.FC = () => {
   const [livePrompt, setLivePrompt] = useState<string>('');
   const [copiedLive, setCopiedLive] = useState(false);
   const [expressionSheet, setExpressionSheet] = useState<ExpressionEntry[] | null>(null);
+  const [inventoryData, setInventoryData] = useState<GeneratedData | null>(null); // New State for Inventory
+  const [copiedInventory, setCopiedInventory] = useState(false); // New Copied State
+
   const [copiedMatrixIndex, setCopiedMatrixIndex] = useState<number | null>(null);
   const [copiedAllExpressions, setCopiedAllExpressions] = useState(false);
   const [generatedData, setGeneratedData] = useState<GeneratedData | null>(null);
@@ -134,16 +137,25 @@ const App: React.FC = () => {
     setTimeout(() => setCopiedLive(false), 2000);
   };
 
+  // --- GENERATION HANDLERS ---
+
+  const validateParams = () => {
+     if (!params.race && !params.role && !params.details) {
+      setErrorMsg(t.errorRequired);
+      setTimeout(() => setErrorMsg(null), 3000);
+      return false;
+    }
+    return true;
+  };
+
   const handleGenerateExpressions = async () => {
      sfx.playClick();
-     if (!params.race && !params.role && !params.details) {
-      setErrorMsg(lang === 'ES' ? "Define el personaje primero." : "Define character first.");
-      setTimeout(() => setErrorMsg(null), 3000);
-      return;
-    }
+     if (!validateParams()) return;
+
     setLoadingState(LoadingState.LOADING);
     setGeneratedData(null);
     setExpressionSheet(null);
+    setInventoryData(null); // Clear inventory
     setErrorMsg(null);
 
     try {
@@ -159,16 +171,39 @@ const App: React.FC = () => {
     }
   };
 
+  const handleGenerateInventory = async () => {
+    sfx.playClick();
+    if (!validateParams()) return;
+
+    setLoadingState(LoadingState.LOADING);
+    // Note: We don't necessarily clear the other data (generatedData/expressionSheet) 
+    // because the user might want to see the character AND the inventory together.
+    // But for layout cleanliness, we might clear or just append. Let's clear to avoid scroll jumping madness.
+    setInventoryData(null);
+    setErrorMsg(null);
+
+    try {
+        const result = await generateInventoryPrompt(params);
+        setInventoryData(result);
+        setLoadingState(LoadingState.SUCCESS);
+        sfx.playSuccess();
+        setTimeout(() => document.getElementById('inventory-section')?.scrollIntoView({ behavior: 'smooth' }), 100);
+    } catch (error) {
+         console.error(error);
+         setErrorMsg(lang === 'ES' ? "Error generando Inventario." : "Error generating Inventory.");
+         setLoadingState(LoadingState.ERROR);
+    }
+  };
+
   const handleGenerate = async () => {
     sfx.playClick();
-    if (!params.race && !params.role && !params.details) {
-      setErrorMsg(t.errorRequired);
-      return;
-    }
+    if (!validateParams()) return;
+    
     setLoadingState(LoadingState.LOADING);
     setErrorMsg(null);
     setGeneratedData(null);
     setExpressionSheet(null);
+    setInventoryData(null);
 
     try {
       const result = await generatePrompt(params);
@@ -183,11 +218,21 @@ const App: React.FC = () => {
     }
   };
 
+  // --- COPY HANDLERS ---
+
   const handleCopyMatrixItem = (text: string, index: number) => {
     sfx.playClick();
     navigator.clipboard.writeText(text);
     setCopiedMatrixIndex(index);
     setTimeout(() => setCopiedMatrixIndex(null), 1500);
+  };
+
+  const handleCopyInventory = () => {
+      if (!inventoryData) return;
+      sfx.playClick();
+      navigator.clipboard.writeText(inventoryData.prompt);
+      setCopiedInventory(true);
+      setTimeout(() => setCopiedInventory(false), 2000);
   };
 
   const handleCopyAllExpressions = () => {
@@ -197,12 +242,12 @@ const App: React.FC = () => {
     let intro = "";
     if (isMJ) {
        intro = lang === 'ES'
-        ? "Aquí tienes una lista de 4 prompts para Midjourney (incluyendo Insignia). Por favor, preséntamelos en bloques de código separados para que pueda copiarlos y pegarlos en Discord fácilmente:\n\n"
-        : "Here is a list of 4 Midjourney prompts (including Token). Please display them in separate code blocks so I can easily copy and paste them into Discord:\n\n";
+        ? "Aquí tienes una lista de 5 prompts para Midjourney (incluyendo Insignia y Victoria). Por favor, preséntamelos en bloques de código separados para que pueda copiarlos y pegarlos en Discord fácilmente:\n\n"
+        : "Here is a list of 5 Midjourney prompts (including Token and Victory). Please display them in separate code blocks so I can easily copy and paste them into Discord:\n\n";
     } else {
        intro = lang === 'ES'
-        ? "Actúa como un generador de imágenes experto. Necesito crear un Kit de Diseño de Personaje completo (Incluyendo Token). Por favor, genera las siguientes 4 imágenes secuencialmente (una tras otra) utilizando exactamente las descripciones provistas a continuación. Mantén la consistencia visual:\n\n"
-        : "Act as an expert image generator. I need to create a full Character Design Kit (Including Token). Please generate the following 4 images sequentially (one after another) using exactly the descriptions provided below. Maintain visual consistency:\n\n";
+        ? "Actúa como un generador de imágenes experto. Necesito crear un Kit de Diseño de Personaje completo (Incluyendo Token). Por favor, genera las siguientes 5 imágenes secuencialmente (una tras otra) utilizando exactamente las descripciones provistas a continuación. Mantén la consistencia visual estricta:\n\n"
+        : "Act as an expert image generator. I need to create a full Character Design Kit (Including Token). Please generate the following 5 images sequentially (one after another) using exactly the descriptions provided below. Maintain strict visual consistency:\n\n";
     }
     const body = expressionSheet.map((item, i) => 
         `👇 IMAGEN ${i + 1}: [${item.label}]\n${item.prompt}`
@@ -301,7 +346,7 @@ const App: React.FC = () => {
 
   const T = {
     ES: {
-      subtitle: "[ Sistema de Arquitectura de Personajes v5.0 GOLD ]",
+      subtitle: "[ Sistema de Arquitectura de Personajes v5.1 Platinum ]",
       designedSuffix: "Diseñado por Mr. Cuarter",
       race: "Especie / Raza",
       gender: "Género",
@@ -335,6 +380,7 @@ const App: React.FC = () => {
       btnCopyLive: "COPIAR BASE",
       btnGenerate: "MEJORAR CON IA (SINGLE)",
       btnPsyche: "PROTOCOLO PSYCHE (SHEETS)",
+      btnInventory: "GENERAR ARSENAL / LOOT",
       btnRandom: "EXPERIMENTACIÓN GENOMA",
       btnElite: "DESPLEGAR AGENTE DE ÉLITE",
       btnLoading: "OPTIMIZANDO NEURONAS...",
@@ -343,6 +389,7 @@ const App: React.FC = () => {
       errorApi: "Error crítico: Verifica tu API Key.",
       
       psycheTitle: "HOJAS DE MODELADO (CHARACTER SHEETS)",
+      inventoryTitle: "SUMINISTROS TÁCTICOS (ASSET SHEET)",
       btnCopyAllMJ: "COPIAR COMANDOS MIDJOURNEY (LISTA)",
       btnCopyAllGen: "COPIAR TODO EL KIT (AUTO-GENERAR)",
       
@@ -365,7 +412,7 @@ const App: React.FC = () => {
       designedBy: "Diseñada por",
     },
     EN: {
-      subtitle: "[ Character Architecture System v5.0 GOLD ]",
+      subtitle: "[ Character Architecture System v5.1 Platinum ]",
       designedSuffix: "Designed by Mr. Cuarter",
       race: "Species / Race",
       gender: "Gender",
@@ -399,6 +446,7 @@ const App: React.FC = () => {
       btnCopyLive: "COPY BASE",
       btnGenerate: "ENHANCE WITH AI (SINGLE)",
       btnPsyche: "PSYCHE PROTOCOL (SHEETS)",
+      btnInventory: "GENERATE ARSENAL / LOOT",
       btnRandom: "GENOME EXPERIMENTATION",
       btnElite: "DEPLOY ELITE AGENT",
       btnLoading: "OPTIMIZING NEURONAS...",
@@ -407,6 +455,7 @@ const App: React.FC = () => {
       errorApi: "Critical Error: Check API Key.",
 
       psycheTitle: "CHARACTER MODEL SHEETS",
+      inventoryTitle: "TACTICAL SUPPLIES (ASSET SHEET)",
       btnCopyAllMJ: "COPY MIDJOURNEY COMMANDS (LIST)",
       btnCopyAllGen: "COPY FULL KIT (AUTO-GENERATE)",
       
@@ -817,10 +866,10 @@ const App: React.FC = () => {
               </div>
            </div>
 
-           {/* ACTION BUTTONS - EQUAL SIZED */}
+           {/* ACTION BUTTONS (REORDERED: Single - Inventory - Psyche) */}
            <div className="mt-6 flex flex-col md:flex-row justify-center gap-4 items-stretch">
               
-             {/* 1. AI ENHANCE BUTTON (STANDARD) */}
+             {/* 1. AI ENHANCE BUTTON (SINGLE) */}
              <button
               onClick={handleGenerate}
               disabled={loadingState === LoadingState.LOADING}
@@ -829,14 +878,14 @@ const App: React.FC = () => {
                   help("Genera UN solo prompt altamente optimizado.", "Generates A SINGLE highly optimized prompt.");
               }}
               className={`
-                relative px-8 py-5 bg-transparent overflow-hidden group
-                text-cyan-400 font-bold uppercase tracking-[0.2em] text-sm transition-all
+                relative px-6 py-5 bg-transparent overflow-hidden group
+                text-cyan-400 font-bold uppercase tracking-[0.2em] text-xs md:text-sm transition-all
                 disabled:opacity-50 disabled:cursor-not-allowed w-full md:flex-1
                 border border-cyan-500/50 group-hover:border-cyan-400 active:scale-95 touch-manipulation min-h-[60px]
               `}
              >
                <span className="absolute inset-0 w-full h-full bg-cyan-500/10 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></span>
-               <span className="relative z-10 flex items-center justify-center gap-3">
+               <span className="relative z-10 flex items-center justify-center gap-2">
                  {loadingState === LoadingState.LOADING ? (
                     <>
                       <div className="w-3 h-3 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
@@ -851,23 +900,45 @@ const App: React.FC = () => {
                </span>
              </button>
 
-             {/* 2. PSYCHE PROTOCOL BUTTON (AI) - THE BIG ONE */}
+             {/* 2. INVENTORY BUTTON (CENTERED) */}
+             <button
+              onClick={handleGenerateInventory}
+              disabled={loadingState === LoadingState.LOADING}
+              onMouseEnter={() => {
+                  sfx.playHover();
+                  help("Genera un SET DE OBJETOS para este personaje (Sprite Sheet sin fondo).", "Generates an ITEM SET for this character (Backgroundless Sprite Sheet).");
+              }}
+              className={`
+                relative px-6 py-5 bg-transparent overflow-hidden group
+                text-emerald-400 font-bold uppercase tracking-[0.2em] text-xs md:text-sm transition-all
+                disabled:opacity-50 disabled:cursor-not-allowed w-full md:flex-1
+                border border-emerald-500/30 hover:border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)] hover:shadow-[0_0_25px_rgba(16,185,129,0.3)] active:scale-95 touch-manipulation min-h-[60px]
+              `}
+             >
+               <span className="absolute inset-0 w-full h-full bg-emerald-500/10 scale-x-0 group-hover:scale-x-100 transition-transform origin-center duration-500"></span>
+               <span className="relative z-10 flex items-center justify-center gap-2">
+                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                 {t.btnInventory}
+               </span>
+             </button>
+
+             {/* 3. PSYCHE PROTOCOL BUTTON (RIGHT) */}
              <button
               onClick={handleGenerateExpressions}
               disabled={loadingState === LoadingState.LOADING}
               onMouseEnter={() => {
                   sfx.playHover();
-                  help("Genera 4 VARIACIONES del personaje (INCLUYE INSIGNIA).", "Generates 4 VARIATIONS of the character (INCLUDES TOKEN).");
+                  help("Genera 5 VARIACIONES maestras (Sheets, Token y Victoria).", "Generates 5 MASTER VARIATIONS (Sheets, Token, Victory).");
               }}
               className={`
-                relative px-8 py-5 bg-transparent overflow-hidden group
-                text-amber-400 font-bold uppercase tracking-[0.2em] text-sm transition-all
+                relative px-6 py-5 bg-transparent overflow-hidden group
+                text-amber-400 font-bold uppercase tracking-[0.2em] text-xs md:text-sm transition-all
                 disabled:opacity-50 disabled:cursor-not-allowed w-full md:flex-1
                 border border-amber-500/30 hover:border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.1)] hover:shadow-[0_0_25px_rgba(245,158,11,0.3)] active:scale-95 touch-manipulation min-h-[60px]
               `}
              >
-               <span className="absolute inset-0 w-full h-full bg-amber-500/10 scale-x-0 group-hover:scale-x-100 transition-transform origin-center duration-500"></span>
-               <span className="relative z-10 flex items-center justify-center gap-3">
+               <span className="absolute inset-0 w-full h-full bg-amber-500/10 scale-x-0 group-hover:scale-x-100 transition-transform origin-right duration-500"></span>
+               <span className="relative z-10 flex items-center justify-center gap-2">
                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                  {t.btnPsyche}
                </span>
@@ -883,7 +954,56 @@ const App: React.FC = () => {
            )}
         </div>
 
-        {/* --- OUTPUT SECTION --- */}
+        {/* --- INVENTORY OUTPUT SECTION (LOOT CRATE STYLE) --- */}
+        {inventoryData && (
+          <div id="inventory-section" className="w-full mt-12 relative animate-fade-in">
+             <div className="flex flex-col items-center justify-center mb-6">
+                <div className="flex items-center gap-3 border border-emerald-900/50 bg-emerald-950/20 px-6 py-2 rounded-full mb-2">
+                   <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_#10b981]"></div>
+                   <h3 className="text-xl font-bold text-emerald-400 tracking-widest font-brand uppercase">{t.inventoryTitle}</h3>
+                </div>
+                <p className="text-slate-500 font-mono text-xs uppercase tracking-[0.3em]">SUPPLY DROP RECEIVED</p>
+             </div>
+
+             <div className="relative group max-w-4xl mx-auto">
+                 {/* Crate Border Design */}
+                 <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-emerald-500"></div>
+                 <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-emerald-500"></div>
+                 <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-emerald-500"></div>
+                 <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-emerald-500"></div>
+                 
+                 <div className="bg-slate-900/90 border-x border-emerald-900/30 p-6 md:p-8 rounded-sm shadow-[0_0_50px_rgba(16,185,129,0.1)] relative overflow-hidden">
+                    {/* Background Grid */}
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5 pointer-events-none"></div>
+                    <div className="absolute inset-0" style={{backgroundImage: 'linear-gradient(rgba(16, 185, 129, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(16, 185, 129, 0.03) 1px, transparent 1px)', backgroundSize: '40px 40px'}}></div>
+
+                    <div className="flex justify-between items-start mb-4 relative z-10">
+                        <span className="text-xs text-emerald-600 font-mono font-bold bg-emerald-950/50 px-2 py-1 border border-emerald-900/50 rounded">CLASS: {params.role.toUpperCase()}</span>
+                        <button 
+                            onClick={handleCopyInventory}
+                            onMouseEnter={() => sfx.playHover()}
+                            className="text-xs bg-emerald-900/20 hover:bg-emerald-500 hover:text-black border border-emerald-700 hover:border-emerald-500 text-emerald-400 px-4 py-2 rounded-sm transition-all uppercase font-bold tracking-wider flex items-center gap-2"
+                        >
+                           {copiedInventory ? 'COPIED!' : 'COPY PROMPT'}
+                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        </button>
+                    </div>
+
+                    <div className="bg-black/60 p-4 rounded-sm border border-emerald-900/50 font-mono text-emerald-100/90 text-sm leading-relaxed whitespace-pre-wrap shadow-inner relative z-10">
+                       {inventoryData.prompt}
+                    </div>
+
+                    {/* Negative Prompt Mini Section */}
+                    <div className="mt-4 pt-4 border-t border-emerald-900/30 relative z-10 opacity-70 hover:opacity-100 transition-opacity">
+                        <p className="text-[10px] text-red-400 uppercase tracking-wider font-bold mb-1">NEGATIVE PROMPT (EXCLUSIONS)</p>
+                        <p className="text-xs text-slate-400 font-mono">{inventoryData.negativePrompt}</p>
+                    </div>
+                 </div>
+             </div>
+          </div>
+        )}
+
+        {/* --- PSYCHE OUTPUT SECTION --- */}
         {expressionSheet && (
           <div id="expression-section" className="w-full mt-16 relative">
              <div className="flex flex-col md:flex-row justify-between items-center mb-6 border-b border-amber-900/30 pb-4 gap-4">
@@ -920,7 +1040,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        <TerminalOutput data={generatedData} loading={loadingState === LoadingState.LOADING} />
+        <TerminalOutput data={generatedData} loading={loadingState === LoadingState.LOADING} format={params.promptFormat} />
 
       </div>
 
