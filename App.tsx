@@ -6,6 +6,7 @@ import { FuturisticToggle } from './components/FuturisticToggle';
 import { ColorPicker } from './components/ColorPicker';
 import { TerminalOutput } from './components/TerminalOutput';
 import { Logo } from './components/Logo';
+import { AssistantHud } from './components/AssistantHud'; // Import Assistant
 import { generatePrompt, generateExpressionSheet } from './services/geminiService';
 import { buildLocalPrompt } from './services/promptBuilder'; 
 import { CharacterParams, GeneratedData, LoadingState, Language, ExpressionEntry } from './types';
@@ -15,6 +16,8 @@ import { sfx } from './services/audioEngine'; // Import SFX
 const App: React.FC = () => {
   const [lang, setLang] = useState<Language>('ES');
   const [isMuted, setIsMuted] = useState(false); // Mute state
+  const [isTutorialMode, setIsTutorialMode] = useState(false); // Tutorial State
+  const [assistantMessage, setAssistantMessage] = useState("Sistemas en línea. Esperando input...");
   
   const [params, setParams] = useState<CharacterParams>({
     mode: 'image',
@@ -72,6 +75,24 @@ const App: React.FC = () => {
     const muted = sfx.toggleMute();
     setIsMuted(muted);
     if (!muted) sfx.playClick();
+  };
+
+  const toggleTutorial = () => {
+    const newState = !isTutorialMode;
+    setIsTutorialMode(newState);
+    sfx.playClick();
+    if (newState) {
+        setAssistantMessage(lang === 'ES' 
+            ? "Protocolo N.E.O. activado. Pasa el cursor sobre cualquier elemento de la interfaz para recibir análisis táctico en tiempo real." 
+            : "N.E.O. Protocol initialized. Hover over any interface element to receive real-time tactical analysis.");
+    }
+  };
+
+  // Helper to update assistant text
+  const help = (textEs: string, textEn: string) => {
+    if (isTutorialMode) {
+        setAssistantMessage(lang === 'ES' ? textEs : textEn);
+    }
   };
 
   const handleCopyLive = () => {
@@ -175,6 +196,10 @@ const App: React.FC = () => {
         mode: prev.mode, 
         promptFormat: prev.promptFormat
     }));
+    help(
+        "Agente Élite desplegado. Se han cargado parámetros predefinidos de alta calidad visual. Puedes modificarlos a tu gusto.",
+        "Elite Agent deployed. High-quality visual presets have been loaded. You can modify them as you wish."
+    );
   };
 
   const mapOpts = (list: any[]) => list.map(item => ({
@@ -208,6 +233,10 @@ const App: React.FC = () => {
       atmosphere: getRandom(C.ATMOSPHERES),
       aspectRatio: getRandom(C.ASPECT_RATIOS),
     }));
+    help(
+        "Protocolo Caos ejecutado. Se han seleccionado parámetros aleatorios para romper bloqueos creativos.",
+        "Chaos Protocol executed. Random parameters selected to break creative blocks."
+    );
   };
 
   // Translation Dictionary
@@ -301,7 +330,7 @@ const App: React.FC = () => {
       btnPsyche: "PSYCHE PROTOCOL (SHEETS)",
       btnRandom: "CHAOS PROTOCOL",
       btnElite: "DEPLOY ELITE AGENT",
-      btnLoading: "OPTIMIZING NEURONS...",
+      btnLoading: "OPTIMIZING NEURONAS...",
       
       errorRequired: "Select at least Race and Class or add details.",
       errorApi: "Critical Error: Check API Key.",
@@ -363,6 +392,17 @@ const App: React.FC = () => {
                 LABORATORIO
             </span>
             </a>
+            <a 
+            href="https://atlascore.mistercuarter.es"
+            className="relative group px-3 py-1.5 md:px-4 md:py-2 overflow-hidden bg-slate-900 border border-slate-700 text-cyan-500 text-[10px] md:text-xs font-mono font-bold tracking-widest uppercase hover:text-white transition-colors flex items-center justify-center min-w-[110px] md:min-w-[120px] rounded-sm"
+            onMouseEnter={() => sfx.playHover()} // SFX
+            >
+            <span className="absolute inset-0 w-full h-full bg-cyan-500/20 translate-x-full group-hover:translate-x-0 transition-transform duration-300"></span>
+            <span className="relative z-10 flex items-center gap-2">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                ATLAS_CORE
+            </span>
+            </a>
         </div>
 
         {/* Right: Brand + Logo + Language Switcher + Mute */}
@@ -373,6 +413,19 @@ const App: React.FC = () => {
                 </h2>
                 <Logo className="w-10 h-10 md:w-12 md:h-12 shrink-0 group-hover:rotate-180 transition-transform duration-700" />
             </div>
+
+            {/* Tutorial Toggle */}
+             <button
+                onClick={toggleTutorial}
+                className={`relative group w-8 h-8 md:w-10 md:h-10 overflow-hidden bg-slate-900 border ${isTutorialMode ? 'border-green-500 text-green-400' : 'border-slate-700 text-slate-500'} text-[10px] font-bold tracking-widest uppercase hover:text-white transition-colors flex items-center justify-center rounded-sm`}
+                title="Toggle Assistant"
+                onMouseEnter={() => sfx.playHover()}
+              >
+                 <span className={`absolute inset-0 w-full h-full ${isTutorialMode ? 'bg-green-500/10' : 'bg-cyan-500/20'} scale-0 group-hover:scale-100 transition-transform duration-300 rounded-sm`}></span>
+                 <span className="relative z-10 font-mono text-xs font-bold">
+                    ?
+                 </span>
+            </button>
 
              {/* Mute Toggle */}
              <button
@@ -431,7 +484,13 @@ const App: React.FC = () => {
            <div className="flex justify-center mt-6">
                 <button
                     onClick={handleElitePreset}
-                    onMouseEnter={() => sfx.playHover()}
+                    onMouseEnter={() => {
+                        sfx.playHover();
+                        help(
+                            "Genera un personaje aleatorio dispuesto para entrar en acción.",
+                            "Generates a random character ready for action."
+                        );
+                    }}
                     className="group relative px-6 py-2 bg-transparent border-y border-cyan-500/30 hover:border-cyan-400 transition-all overflow-hidden"
                 >
                     <div className="absolute inset-0 bg-cyan-500/10 scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-center"></div>
@@ -447,7 +506,13 @@ const App: React.FC = () => {
         </header>
 
         {/* Global Controls */}
-        <div className="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-6 mb-8 max-w-4xl mx-auto">
+        <div 
+            className="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-6 mb-8 max-w-4xl mx-auto"
+            onMouseEnter={() => help(
+                "Configuración Global: Elige si quieres generar una imagen estática o un video, y si prefieres el formato de comandos de Midjourney (/imagine) o descripciones estándar.",
+                "Global Config: Choose between static image or video generation, and select Midjourney command format (/imagine) or standard descriptions."
+            )}
+        >
           {/* Mode Toggle */}
           <FuturisticToggle 
             leftLabel={t.modeImg} rightLabel={t.modeVid}
@@ -494,59 +559,117 @@ const App: React.FC = () => {
               <div className="space-y-5">
                 <div className="text-cyan-500 font-mono text-sm border-b border-slate-700 pb-2 mb-4">{t.secIdentity}</div>
                 <div className="grid grid-cols-2 gap-3">
-                  <FuturisticSelect label={t.race} value={params.race} onChange={(v) => setParams(prev => ({...prev, race: v}))} options={mapOpts(C.RACES)} />
-                  <FuturisticSelect label={t.gender} value={params.gender} onChange={(v) => setParams(prev => ({...prev, gender: v}))} options={mapOpts(C.GENDERS)} />
+                  <FuturisticSelect 
+                    label={t.race} value={params.race} onChange={(v) => setParams(prev => ({...prev, race: v}))} options={mapOpts(C.RACES)} 
+                    onHelp={() => help("Define la especie base. Es el núcleo visual del prompt.", "Defines base species. The visual core of the prompt.")}
+                  />
+                  <FuturisticSelect 
+                    label={t.gender} value={params.gender} onChange={(v) => setParams(prev => ({...prev, gender: v}))} options={mapOpts(C.GENDERS)} 
+                    onHelp={() => help("Género o presentación física del personaje.", "Gender or physical presentation.")}
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                   <FuturisticSelect label={t.age} value={params.age} onChange={(v) => setParams(prev => ({...prev, age: v}))} options={mapOpts(C.AGES)} />
-                   <FuturisticSelect label={t.bodyType} value={params.bodyType} onChange={(v) => setParams(prev => ({...prev, bodyType: v}))} options={mapOpts(C.BODY_TYPES)} />
+                   <FuturisticSelect 
+                    label={t.age} value={params.age} onChange={(v) => setParams(prev => ({...prev, age: v}))} options={mapOpts(C.AGES)} 
+                    onHelp={() => help("La edad afecta a las texturas de la piel y proporciones.", "Age affects skin textures and proportions.")}
+                   />
+                   <FuturisticSelect 
+                    label={t.bodyType} value={params.bodyType} onChange={(v) => setParams(prev => ({...prev, bodyType: v}))} options={mapOpts(C.BODY_TYPES)} 
+                    onHelp={() => help("Silueta y complexión física.", "Silhouette and physical build.")}
+                   />
                 </div>
-                <FuturisticSelect label={t.role} value={params.role} onChange={(v) => setParams(prev => ({...prev, role: v}))} options={mapOpts(C.ROLES)} />
-                <FuturisticSelect label={t.subRole} value={params.subRole} onChange={(v) => setParams(prev => ({...prev, subRole: v}))} options={mapOpts(C.ROLES)} />
+                <FuturisticSelect 
+                    label={t.role} value={params.role} onChange={(v) => setParams(prev => ({...prev, role: v}))} options={mapOpts(C.ROLES)} 
+                    onHelp={() => help("El arquetipo define el equipamiento base (armas, herramientas).", "Archetype defines base equipment (weapons, tools).")}
+                />
+                <FuturisticSelect 
+                    label={t.subRole} value={params.subRole} onChange={(v) => setParams(prev => ({...prev, subRole: v}))} options={mapOpts(C.ROLES)} 
+                    onHelp={() => help("Añade matices específicos al rol principal.", "Adds specific nuances to the main role.")}
+                />
               </div>
 
               {/* SECTION 2: VISUALS & EXPRESSION */}
               <div className="space-y-5">
                 <div className="text-cyan-500 font-mono text-sm border-b border-slate-700 pb-2 mb-4">{t.secExpression}</div>
-                <FuturisticSelect label={t.emotion} value={params.emotion} onChange={(v) => setParams(prev => ({...prev, emotion: v}))} options={mapOpts(C.EMOTIONS)} />
+                <FuturisticSelect 
+                    label={t.emotion} value={params.emotion} onChange={(v) => setParams(prev => ({...prev, emotion: v}))} options={mapOpts(C.EMOTIONS)} 
+                    onHelp={() => help("La expresión facial cambia la narrativa de la imagen.", "Facial expression changes the image narrative.")}
+                />
                 {params.mode === 'video' ? (
-                  <FuturisticSelect label={t.action} value={params.action} onChange={(v) => setParams(prev => ({...prev, action: v}))} options={mapOpts(C.ACTIONS_VIDEO)} />
+                  <FuturisticSelect 
+                    label={t.action} value={params.action} onChange={(v) => setParams(prev => ({...prev, action: v}))} options={mapOpts(C.ACTIONS_VIDEO)} 
+                    onHelp={() => help("Movimiento principal para la generación de video.", "Main movement for video generation.")}
+                  />
                 ) : (
-                  <FuturisticSelect label={t.pose} value={params.pose} onChange={(v) => setParams(prev => ({...prev, pose: v}))} options={mapOpts(C.POSES_IMAGE)} />
+                  <FuturisticSelect 
+                    label={t.pose} value={params.pose} onChange={(v) => setParams(prev => ({...prev, pose: v}))} options={mapOpts(C.POSES_IMAGE)} 
+                    onHelp={() => help("La postura corporal del personaje.", "Body posture of the character.")}
+                  />
                 )}
-                <FuturisticSelect label={t.style} value={params.style} onChange={(v) => setParams(prev => ({...prev, style: v}))} options={mapOpts(C.STYLES)} />
-                <ColorPicker label={t.colors} selectedColors={params.colors} onChange={(colors) => setParams(prev => ({...prev, colors}))} />
+                <FuturisticSelect 
+                    label={t.style} value={params.style} onChange={(v) => setParams(prev => ({...prev, style: v}))} options={mapOpts(C.STYLES)} 
+                    onHelp={() => help("Define el motor de renderizado estético (3D, 2D, Anime, Oleo).", "Defines the aesthetic rendering engine (3D, 2D, Anime, Oil).")}
+                />
+                <div onMouseEnter={() => help("Selecciona hasta 3 colores dominantes para la paleta.", "Select up to 3 dominant colors for the palette.")}>
+                    <ColorPicker label={t.colors} selectedColors={params.colors} onChange={(colors) => setParams(prev => ({...prev, colors}))} />
+                </div>
               </div>
 
               {/* SECTION 3: COMPOSITION & TECH */}
               <div className="space-y-5">
                  <div className="text-cyan-500 font-mono text-sm border-b border-slate-700 pb-2 mb-4">{t.secVisuals}</div>
                  <div className="grid grid-cols-2 gap-3">
-                    <FuturisticSelect label={t.framing} value={params.framing} onChange={(v) => setParams(prev => ({...prev, framing: v}))} options={mapOpts(C.FRAMINGS)} />
-                    <FuturisticSelect label={t.lighting} value={params.lighting} onChange={(v) => setParams(prev => ({...prev, lighting: v}))} options={mapOpts(C.LIGHTINGS)} />
+                    <FuturisticSelect 
+                        label={t.framing} value={params.framing} onChange={(v) => setParams(prev => ({...prev, framing: v}))} options={mapOpts(C.FRAMINGS)} 
+                        onHelp={() => help("Distancia de cámara y tipo de lente.", "Camera distance and lens type.")}
+                    />
+                    <FuturisticSelect 
+                        label={t.lighting} value={params.lighting} onChange={(v) => setParams(prev => ({...prev, lighting: v}))} options={mapOpts(C.LIGHTINGS)} 
+                        onHelp={() => help("Esquema de iluminación de la escena.", "Scene lighting scheme.")}
+                    />
                  </div>
-                 <FuturisticSelect label={t.atmosphere} value={params.atmosphere} onChange={(v) => setParams(prev => ({...prev, atmosphere: v}))} options={mapOpts(C.ATMOSPHERES)} />
+                 <FuturisticSelect 
+                    label={t.atmosphere} value={params.atmosphere} onChange={(v) => setParams(prev => ({...prev, atmosphere: v}))} options={mapOpts(C.ATMOSPHERES)} 
+                    onHelp={() => help("Partículas, clima y densidad del aire.", "Particles, weather, and air density.")}
+                 />
                  <div className="grid grid-cols-2 gap-3">
-                    <FuturisticSelect label={t.setting} value={params.setting} onChange={(v) => setParams(prev => ({...prev, setting: v}))} options={mapOpts(C.SETTINGS)} />
-                    <FuturisticSelect label={t.background} value={params.background} onChange={(v) => setParams(prev => ({...prev, background: v}))} options={mapOpts(C.BACKGROUNDS)} />
+                    <FuturisticSelect 
+                        label={t.setting} value={params.setting} onChange={(v) => setParams(prev => ({...prev, setting: v}))} options={mapOpts(C.SETTINGS)} 
+                        onHelp={() => help("Ubicación física donde se encuentra el personaje.", "Physical location where the character is.")}
+                    />
+                    <FuturisticSelect 
+                        label={t.background} value={params.background} onChange={(v) => setParams(prev => ({...prev, background: v}))} options={mapOpts(C.BACKGROUNDS)} 
+                        onHelp={() => help("Control del fondo. Usa 'Solid White' para concept art recortable.", "Background control. Use 'Solid White' for cut-out concept art.")}
+                    />
                  </div>
-                 <FuturisticSelect label={t.format} value={params.aspectRatio} onChange={(v) => setParams(prev => ({...prev, aspectRatio: v}))} options={C.ASPECT_RATIOS.map(ar => ({ label: ar.label, value: ar.value }))} />
+                 <FuturisticSelect 
+                    label={t.format} value={params.aspectRatio} onChange={(v) => setParams(prev => ({...prev, aspectRatio: v}))} options={C.ASPECT_RATIOS.map(ar => ({ label: ar.label, value: ar.value }))} 
+                    onHelp={() => help("Proporción de la imagen (Ancho : Alto).", "Image aspect ratio (Width : Height).")}
+                 />
               </div>
            </div>
            
            {/* DETAILS (FULL WIDTH) */}
            <div className="mt-6 border-t border-slate-800 pt-6">
-              <FuturisticInput
-                label={t.details}
-                value={params.details}
-                onChange={(v) => setParams(prev => ({...prev, details: v}))}
-                placeholder={t.placeholderDetails}
-                multiline={true}
-              />
+              <div onMouseEnter={() => help("Describe accesorios, cicatrices o elementos únicos no cubiertos arriba.", "Describe accessories, scars, or unique elements not covered above.")}>
+                <FuturisticInput
+                    label={t.details}
+                    value={params.details}
+                    onChange={(v) => setParams(prev => ({...prev, details: v}))}
+                    placeholder={t.placeholderDetails}
+                    multiline={true}
+                />
+              </div>
            </div>
 
            {/* --- LIVE PREVIEW BUFFER SECTION (IMPROVED) --- */}
-           <div className="mt-8 bg-black/40 border border-slate-700 rounded-sm p-4 relative group hover:border-cyan-500/50 transition-colors">
+           <div 
+            className="mt-8 bg-black/40 border border-slate-700 rounded-sm p-4 relative group hover:border-cyan-500/50 transition-colors"
+            onMouseEnter={() => help(
+                "Vista previa del prompt 'crudo' que se enviará a la IA para ser optimizado.",
+                "Preview of the 'raw' prompt that will be sent to the AI for optimization."
+            )}
+           >
               <div className="flex justify-between items-center mb-2">
                 <span className="text-[10px] text-cyan-500 uppercase tracking-widest font-mono font-bold animate-pulse">
                    {t.lblLivePreview}
@@ -571,7 +694,10 @@ const App: React.FC = () => {
              <button
               onClick={handleGenerate}
               disabled={loadingState === LoadingState.LOADING}
-              onMouseEnter={() => sfx.playHover()}
+              onMouseEnter={() => {
+                  sfx.playHover();
+                  help("Genera UN solo prompt altamente optimizado y detallado.", "Generates A SINGLE highly optimized and detailed prompt.");
+              }}
               className={`
                 relative px-8 py-4 bg-transparent overflow-hidden group
                 text-cyan-400 font-bold uppercase tracking-[0.2em] text-xs md:text-sm transition-all
@@ -599,7 +725,10 @@ const App: React.FC = () => {
              <button
               onClick={handleGenerateExpressions}
               disabled={loadingState === LoadingState.LOADING}
-              onMouseEnter={() => sfx.playHover()}
+              onMouseEnter={() => {
+                  sfx.playHover();
+                  help("Genera 4 VARIACIONES del personaje (Frente, Perfil, Emociones) para crear una Hoja de Modelo completa.", "Generates 4 VARIATIONS of the character (Front, Profile, Emotions) to create a complete Model Sheet.");
+              }}
               className={`
                 relative px-12 py-5 bg-transparent overflow-hidden group
                 text-amber-400 font-bold uppercase tracking-[0.2em] text-sm md:text-base transition-all
@@ -701,7 +830,8 @@ const App: React.FC = () => {
            </div>
 
            <div className="flex items-center gap-4">
-              <SocialIcon href="https://instagram.com/MrCuarter" icon="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+              {/* Instagram Icon - UPDATED to Standard Logo */}
+              <SocialIcon href="https://instagram.com/MrCuarter" icon="M7.8,2H16.2C19.4,2 22,4.6 22,7.8V16.2A5.8,5.8 0 0,1 16.2,22H7.8C4.6,22 2,19.4 2,16.2V7.8A5.8,5.8 0 0,1 7.8,2M7.6,4A3.6,3.6 0 0,0 4,7.6V16.4C4,18.39 5.61,20 7.6,20H16.4A3.6,3.6 0 0,0 20,16.4V7.6C20,5.61 18.39,4 16.4,4H7.6M17.25,5.5A1.25,1.25 0 0,1 18.5,6.75A1.25,1.25 0 0,1 17.25,8A1.25,1.25 0 0,1 16,6.75A1.25,1.25 0 0,1 17.25,5.5M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9Z" />
               <SocialIcon href="https://twitter.com/MrCuarter" icon="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
               {/* LinkedIn Icon */}
               <SocialIcon href="https://es.linkedin.com/in/norberto-cuartero-toledo-9279a813b" icon="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h5v-8.306c0-4.613 5.432-5.17 5.432 0v8.306h5v-10.502c0-8.586-9.213-7.974-10.463-3.715v-2.089z" />
@@ -710,6 +840,13 @@ const App: React.FC = () => {
         </div>
         <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-900 to-transparent"></div>
       </footer>
+
+      {/* --- FLOATING ASSISTANT HUD --- */}
+      <AssistantHud 
+        isActive={isTutorialMode} 
+        message={assistantMessage} 
+        onClose={toggleTutorial} 
+      />
     </div>
   );
 };

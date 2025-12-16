@@ -11,12 +11,18 @@ interface FuturisticSelectProps {
   value: string;
   onChange: (value: string) => void;
   options: Option[];
+  onHelp?: () => void; // New Prop
 }
 
-export const FuturisticSelect: React.FC<FuturisticSelectProps> = ({ label, value, onChange, options }) => {
+export const FuturisticSelect: React.FC<FuturisticSelectProps> = ({ label, value, onChange, options, onHelp }) => {
   return (
-    <div className="flex flex-col space-y-2 group">
-      <label className="text-cyan-400 text-xs uppercase tracking-widest font-semibold ml-1 group-hover:text-cyan-300 transition-colors">
+    <div 
+      className="flex flex-col space-y-2 group"
+      onMouseEnter={() => {
+        if (onHelp) onHelp();
+      }}
+    >
+      <label className="text-cyan-400 text-xs uppercase tracking-widest font-semibold ml-1 group-hover:text-cyan-300 transition-colors cursor-help">
         {label}
       </label>
       <div className="relative">
