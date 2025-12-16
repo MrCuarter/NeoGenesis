@@ -121,7 +121,7 @@ export const generatePrompt = async (params: CharacterParams): Promise<Generated
 };
 
 /**
- * PROTOCOLO PSYCHE 3.0: Genera 5 Hojas Maestras con estricto control de consistencia.
+ * PROTOCOLO PSYCHE 4.0: Genera 7 Hojas Maestras (Updated).
  */
 export const generateExpressionSheet = async (params: CharacterParams): Promise<ExpressionEntry[]> => {
   let ai;
@@ -133,16 +133,15 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
   }
 
   const isMJ = params.promptFormat === 'midjourney';
-  const aspectRatio = "--ar 3:2"; 
-
-  // Formateamos las reglas según el modo elegido
+  
+  // Definimos las reglas de formato dinámicamente para permitir distintos Aspect Ratios
   const formatRules = isMJ 
-    ? `FORMATO MIDJOURNEY: Añade "${aspectRatio} --v 6.0" al final. Empieza con "/imagine prompt:".`
-    : `FORMATO GENÉRICO: Descripción detallada en inglés puro. PROHIBIDO usar --ar, --v o /imagine. Usa "widescreen aspect ratio" en el texto si es necesario.`;
+    ? `FORMATO MIDJOURNEY: Empieza con "/imagine prompt:". AL FINAL, añade los parámetros específicos indicados para cada imagen (ej: --ar 3:2 o --ar 1:1) seguido de "--v 6.0".`
+    : `FORMATO GENÉRICO: Descripción detallada en inglés puro. PROHIBIDO usar --ar, --v o /imagine. Incluye la descripción del formato (ej: "square format" o "widescreen layout") en el texto.`;
 
   const systemInstruction = `
-    Eres un Director de Arte de Concept Art (Protocolo PSYCHE v3.0).
-    Tu objetivo es crear un "Character Design Kit" compuesto por EXACTAMENTE 5 PROMPTS MAESTROS.
+    Eres un Director de Arte de Concept Art (Protocolo PSYCHE v4.0).
+    Tu objetivo es crear un "Character Design Kit" compuesto por EXACTAMENTE 7 PROMPTS MAESTROS.
     
     ESTRATEGIA DE CONSISTENCIA GLOBAL (ADN VISUAL):
     Debes definir internamente un "Visual DNA" y aplicarlo a TODOS los prompts para evitar alucinaciones entre imágenes.
@@ -151,50 +150,73 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
     3. ANATOMÍA: ${params.bodyType}, ${params.gender}, ${params.race}. (Fuerza: "identical proportions across all images").
     4. FONDO: SIEMPRE "pure solid white background (#FFFFFF), no shadows, no gradients, subject fully isolated, cutout-ready".
 
-    LOS 5 PROMPTS MAESTROS:
+    LOS 7 PROMPTS MAESTROS (SECUECIA ESTRICTA):
+    
     1. "ARCHITECTURE VIEW" (Referencia Técnica):
        - Triptych layout: Front View, Side View, Back View.
        - Neutral expression. Arms slightly away (A-Pose).
        - Keywords: "Model sheet, technical drawing layout, distinct separation".
+       - Aspect Ratio: ${isMJ ? '--ar 3:2' : 'landscape'}.
 
     2. "CINEMATIC NARRATIVE" (Lenguaje Corporal):
        - Solo Busto/Medio Cuerpo.
        - Acción sutil relacionada con su rol (${params.role}).
        - Keywords: "Cinematic lighting, depth of field, focused, character portrait".
+       - Aspect Ratio: ${isMJ ? '--ar 3:2' : 'landscape'}.
 
-    3. "EMOTIONAL RANGE" (Expresividad):
-       - Full body character showing 3 distinct contrasting emotions (e.g., Angry, Happy, Surprised).
-       - Same pose base, only face and gesture changes.
-       - Keywords: "Facial expression sheet, emotion study".
+    3. "ACTION POSES A" (Poses Dinámicas Set 1):
+       - Triptych / Three characters layout (Full Body).
+       - Pose 1: Profile view, arms crossed, confident, looking at camera.
+       - Pose 2: Alert combat stance, gritting teeth, aggressive.
+       - Pose 3: Smiling, thumbs up, winking one eye.
+       - Keywords: "Action sheet, dynamic poses, character study".
+       - Aspect Ratio: ${isMJ ? '--ar 3:2' : 'landscape'}.
 
-    4. "RPG TOKEN / INSIGNIA" (Uso en VTT):
+    4. "ACTION POSES B" (Poses Dinámicas Set 2):
+       - Triptych / Three characters layout (Full Body).
+       - Pose 1: Crouching low, one hand on ground, looking at camera with curiosity/strangeness.
+       - Pose 2: Walking away (view from back/side), looking back over shoulder.
+       - Pose 3: Facepalm gesture (hand covering face), embarrassed or resigned expression.
+       - Keywords: "Action sheet, dynamic poses, character study".
+       - Aspect Ratio: ${isMJ ? '--ar 3:2' : 'landscape'}.
+
+    5. "EXPRESSIONS GRID" (Grid de 6 Caras):
+       - Layout: 2 rows of 3 images (6 distinct panels in total).
+       - Framing: Chest-up / Headshots.
+       - Expressions: 1.Happy, 2.Tired, 3.Disgusted, 4.Scared, 5.Exultant, 6.Angry.
+       - Keywords: "Expression sheet, 2x3 grid, emotional study, facial chart".
+       - Aspect Ratio: ${isMJ ? '--ar 3:2' : 'landscape'}.
+
+    6. "RPG TOKEN / INSIGNIA" (Uso en VTT - Formato Cuadrado):
        - Head & Shoulders inside a DECORATIVE BORDER (Circular/Hexagonal).
        - Stylized border matching character theme (Metal/Gold/Magic).
        - Optimized for small scale readability (High contrast).
        - Keywords: "RPG Token, sticker style, vector rendering, thick border".
+       - Aspect Ratio: ${isMJ ? '--ar 1:1' : 'square format'}.
 
-    5. "VICTORY POSE" (Iconic/Promotional):
+    7. "VICTORY POSE" (Iconic/Promotional):
        - Full body, dynamic victory or confident pose.
        - NO background environment. Use ABSTRACT elements only (glow, particles, symbol) behind character.
        - Keywords: "Hero shot, promotional art, dynamic angle, particle effects".
+       - Aspect Ratio: ${isMJ ? '--ar 3:2' : 'landscape'}.
 
     EXCLUSIONES GLOBALES (Negative Prompt Implicito):
     - No background scenes, no props lying around, no text, no logos, no extra characters, no motion blur, no deformation.
 
     REGLAS TÉCNICAS:
-    - Idioma: Inglés.
+    - Idioma: Inglés (Output en Inglés).
     - Output: Array de Objetos JSON.
     - ${formatRules}
   `;
 
   const userPrompt = `
-    Genera el Kit de Diseño (5 Prompts) para:
+    Genera el Kit de Diseño COMPLETO (7 Prompts) para:
     - Personaje: ${params.race} ${params.role} (${params.subRole})
     - Apariencia: ${params.age}, ${params.skinTone}
     - Estilo Visual: ${params.style}
     - Detalles Clave: ${params.details}
     
-    Asegúrate de que los 5 prompts compartan el mismo ADN VISUAL descrito en las instrucciones.
+    Asegúrate de que los 7 prompts sigan estrictamente las poses descritas en las instrucciones.
   `;
 
   const responseSchema: Schema = {
@@ -202,7 +224,7 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
     items: {
       type: Type.OBJECT,
       properties: {
-        label: { type: Type.STRING, description: "Título del Sheet (ej: VICTORY POSE)" },
+        label: { type: Type.STRING, description: "Título del Sheet (ej: ACTION POSES A)" },
         prompt: { type: Type.STRING, description: "El prompt completo." }
       },
       required: ["label", "prompt"]

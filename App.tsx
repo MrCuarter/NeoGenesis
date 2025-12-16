@@ -239,18 +239,17 @@ const App: React.FC = () => {
     sfx.playClick();
     if (!expressionSheet) return;
     const isMJ = params.promptFormat === 'midjourney';
+    
+    // CHANGE: Force English intro text regardless of UI language for consistency
     let intro = "";
     if (isMJ) {
-       intro = lang === 'ES'
-        ? "Aquí tienes una lista de 5 prompts para Midjourney (incluyendo Insignia y Victoria). Por favor, preséntamelos en bloques de código separados para que pueda copiarlos y pegarlos en Discord fácilmente:\n\n"
-        : "Here is a list of 5 Midjourney prompts (including Token and Victory). Please display them in separate code blocks so I can easily copy and paste them into Discord:\n\n";
+       intro = "Here is a list of 5 Midjourney prompts (including Token and Victory). Please display them in separate code blocks so I can easily copy and paste them into Discord:\n\n";
     } else {
-       intro = lang === 'ES'
-        ? "Actúa como un generador de imágenes experto. Necesito crear un Kit de Diseño de Personaje completo (Incluyendo Token). Por favor, genera las siguientes 5 imágenes secuencialmente (una tras otra) utilizando exactamente las descripciones provistas a continuación. Mantén la consistencia visual estricta:\n\n"
-        : "Act as an expert image generator. I need to create a full Character Design Kit (Including Token). Please generate the following 5 images sequentially (one after another) using exactly the descriptions provided below. Maintain strict visual consistency:\n\n";
+       intro = "Act as an expert image generator. I need to create a full Character Design Kit (Including Token). Please generate the following 5 images sequentially (one after another) using exactly the descriptions provided below. Maintain strict visual consistency:\n\n";
     }
+
     const body = expressionSheet.map((item, i) => 
-        `👇 IMAGEN ${i + 1}: [${item.label}]\n${item.prompt}`
+        `👇 IMAGE ${i + 1}: [${item.label}]\n${item.prompt}`
     ).join("\n\n" + "-".repeat(40) + "\n\n");
     const fullPayload = intro + body;
     navigator.clipboard.writeText(fullPayload);
