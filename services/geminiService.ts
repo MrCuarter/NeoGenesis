@@ -41,22 +41,25 @@ export const generatePrompt = async (params: CharacterParams): Promise<Generated
     Eres un Arquitecto de Prompts IA experto (Prompt Engineer).
     Tu tarea es generar un prompt optimizado basado en los parámetros del usuario.
     
-    IDIOMA DE SALIDA: Inglés (SIEMPRE, las IAs de imagen entienden mejor el inglés).
+    IDIOMA DE SALIDA: Inglés (SIEMPRE).
+    MODO: ${params.mode.toUpperCase()}
+    FORMATO: ${params.promptFormat.toUpperCase()}
 
-    MODO SELECCIONADO: ${params.mode.toUpperCase()}
-    FORMATO SOLICITADO: ${params.promptFormat.toUpperCase()}
-
-    Reglas para formato MIDJOURNEY:
-    1. Debes comenzar con "/imagine prompt:"
-    2. Estructura: [Sujeto principal + Descripción física] + [Acción] + [Entorno] + [Estilo/Iluminación/Atmósfera] + [Parámetros técnicos].
-    3. Añade parámetros al final: ${params.aspectRatio} --v 6.0
-    4. Si es VIDEO, enfocate en el movimiento y la fluidez.
-
-    Reglas para formato GENÉRICO (Stable Diffusion / DALL-E / RunwayGen):
-    1. Descripción natural y fluida muy detallada.
-    2. Enfócate en la calidad visual: "masterpiece, best quality, 8k, ultra-detailed, cinematic lighting, sharp focus".
+    === REGLAS CRÍTICAS DE FORMATO ===
     
-    Colores solicitados: ${params.colors.join(", ")}. Asegúrate de integrar estos colores en la paleta de la imagen/video.
+    SI EL FORMATO ES "MIDJOURNEY":
+    1. Comienza con "/imagine prompt:".
+    2. Usa sintaxis de parámetros: añade "${params.aspectRatio} --v 6.0" al final.
+    3. Usa "::" para pesos si es necesario (ej: "Character::2 Background::1").
+
+    SI EL FORMATO ES "GENERIC" (Stable Diffusion / Flux / DALL-E):
+    1. PROHIBIDO usar comandos que empiecen por "--" o "/" (Ej: NO USAR --ar, --v, --no, /imagine).
+    2. Convierte el Aspect Ratio a lenguaje natural (Ej: si el usuario pide 16:9, escribe "cinematic 16:9 aspect ratio").
+    3. Estructura: "Subject description, Action, Environment, Artstyle keywords, Quality tags".
+    4. Usa palabras clave de calidad: "masterpiece, best quality, ultra-detailed, 8k uhd".
+
+    === PALETA DE COLOR ===
+    Colores obligatorios: ${params.colors.join(", ")}.
   `;
 
   const actionPart = isVideo ? `Acción (VIDEO): ${params.action}` : `Pose (IMAGEN): ${params.pose}`;
@@ -77,6 +80,7 @@ export const generatePrompt = async (params: CharacterParams): Promise<Generated
     - Tipo de Fondo: ${params.background}
     - Colores Clave: ${params.colors.join(", ")}
     - Detalles extra: ${params.details}
+    - Formato de Aspecto: ${params.aspectRatio} (Recuerda: si es Genérico, tradúcelo a texto, NO uses --ar).
     
     Output JSON.
   `;
@@ -93,7 +97,7 @@ export const generatePrompt = async (params: CharacterParams): Promise<Generated
           properties: {
             prompt: {
               type: Type.STRING,
-              description: isMJ ? "El prompt completo comenzando con /imagine..." : "La descripción detallada del prompt.",
+              description: isMJ ? "El prompt completo con /imagine y parámetros." : "La descripción detallada sin parámetros técnicos.",
             },
             negativePrompt: {
               type: Type.STRING,
@@ -133,8 +137,8 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
 
   // Formateamos las reglas según el modo elegido
   const formatRules = isMJ 
-    ? `FORMATO MIDJOURNEY: Añade "${aspectRatio} --v 6.0" al final. Empieza con "/imagine prompt:". Usa parámetros --no (negative prompt) al final.`
-    : `FORMATO GENÉRICO: Descripción detallada en inglés sin comandos de Discord.`;
+    ? `FORMATO MIDJOURNEY: Añade "${aspectRatio} --v 6.0" al final. Empieza con "/imagine prompt:".`
+    : `FORMATO GENÉRICO: Descripción detallada en inglés puro. PROHIBIDO usar --ar, --v o /imagine. Usa "widescreen aspect ratio" en el texto si es necesario.`;
 
   const systemInstruction = `
     Eres un Director de Arte de Concept Art (Protocolo PSYCHE v3.0).
@@ -199,7 +203,7 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
       type: Type.OBJECT,
       properties: {
         label: { type: Type.STRING, description: "Título del Sheet (ej: VICTORY POSE)" },
-        prompt: { type: Type.STRING, description: "El prompt completo incluyendo parámetros técnicos." }
+        prompt: { type: Type.STRING, description: "El prompt completo." }
       },
       required: ["label", "prompt"]
     }
@@ -255,7 +259,7 @@ export const generateInventoryPrompt = async (params: CharacterParams): Promise<
     - ESTILO VISUAL: Debe coincidir EXACTAMENTE con el estilo del personaje (ej: si es Cyberpunk, los objetos son neón/tech; si es Fantasía, son madera/acero/magia).
 
     FORMATO:
-    - ${isMJ ? `Empieza con "/imagine prompt:". Termina con "${assetRatio} --v 6.0". Usa keywords como "game assets sprite sheet, isolated, vector style".` : "Descripción detallada para Stable Diffusion/DALL-E."}
+    - ${isMJ ? `Empieza con "/imagine prompt:". Termina con "${assetRatio} --v 6.0".` : "Descripción detallada para Stable Diffusion/DALL-E. NO usar comandos --ar."}
   `;
 
   const userPrompt = `

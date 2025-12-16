@@ -6,11 +6,37 @@ const joinParts = (parts: (string | undefined | null)[], separator: string = " "
   return parts.filter(p => p && p.trim() !== "").join(separator).trim();
 };
 
+// Traductor de Aspect Ratio técnico (--ar) a Lenguaje Natural para Generic Mode
+const getNaturalAspectRatio = (arParam: string): string => {
+  if (arParam.includes('16:9')) return "cinematic widescreen 16:9 format";
+  if (arParam.includes('1:1')) return "square 1:1 format, centered composition";
+  if (arParam.includes('9:16')) return "vertical mobile 9:16 format, tall aspect ratio";
+  if (arParam.includes('4:5')) return "vertical portrait 4:5 format";
+  if (arParam.includes('4:3')) return "classic TV 4:3 format";
+  if (arParam.includes('21:9')) return "ultrawide panoramic 21:9 format";
+  return "";
+};
+
+// Tags de calidad adaptativos según el estilo visual
+const getQualityTags = (style: string): string => {
+  const s = style.toLowerCase();
+  if (s.includes('photorealistic') || s.includes('cinematic') || s.includes('real')) {
+    return "raw photo, 8k uhd, dslr, soft lighting, high quality, film grain, Fujifilm XT3";
+  }
+  if (s.includes('anime') || s.includes('ghibli') || s.includes('illustration')) {
+    return "masterpiece, best quality, highly detailed, sharp lines, 4k, pixiv top tier";
+  }
+  if (s.includes('3d') || s.includes('pixar') || s.includes('render')) {
+    return "unreal engine 5 render, octane render, 8k, raytracing, global illumination, 3d masterpiece";
+  }
+  // Default fallback
+  return "masterpiece, best quality, ultra-detailed, sharp focus, 8k";
+};
+
 export const buildLocalPrompt = (params: CharacterParams): string => {
   const isMJ = params.promptFormat === 'midjourney';
   
   // --- 1. SUBJECT CONSTRUCTION ---
-  // "A [Age] [Gender] [Race] [Role] [SubRole] [BodyType] [SkinTone] wearing [Details]..."
   const subjectAdjectives = joinParts([params.age, params.gender, params.race]);
   const roleStr = params.subRole ? `${params.role} (${params.subRole})` : params.role;
   
@@ -20,7 +46,6 @@ export const buildLocalPrompt = (params: CharacterParams): string => {
   if (params.details) subjectSegment += `, wearing ${params.details}`;
 
   // --- 2. ACTION & EMOTION ---
-  // "looking [Emotion], [Pose/Action]..."
   let actionSegment = "";
   if (params.emotion) actionSegment += `looking ${params.emotion}`;
   
@@ -30,7 +55,6 @@ export const buildLocalPrompt = (params: CharacterParams): string => {
   }
 
   // --- 3. ENVIRONMENT & LIGHTING ---
-  // "situated in [Setting], [Background], illuminated by [Lighting]..."
   let envSegment = "";
   if (params.setting) envSegment += `in a ${params.setting}`;
   if (params.background && !params.background.includes("Detailed")) envSegment += `, with ${params.background}`;
@@ -38,7 +62,6 @@ export const buildLocalPrompt = (params: CharacterParams): string => {
   if (params.atmosphere) envSegment += `, creating a ${params.atmosphere}`;
 
   // --- 4. STYLE & TECHNICAL ---
-  // "Style: [Style]. [Framing]. [Colors]. [Quality]"
   let styleSegment = "";
   if (params.style) styleSegment += `Artstyle: ${params.style}`;
   if (params.framing) styleSegment += `, shot as ${params.framing}`;
@@ -52,16 +75,29 @@ export const buildLocalPrompt = (params: CharacterParams): string => {
   let finalPrompt = "";
 
   if (isMJ) {
-    // Midjourney prefers: /imagine prompt: Subject + Action + Env + Style + Params
+    // --- MIDJOURNEY LOGIC ---
+    // Uses specific commands like /imagine, --ar, --v
     const corePrompt = joinParts([subjectSegment, actionSegment, envSegment, styleSegment], ". ");
     finalPrompt = `/imagine prompt: ${corePrompt} ${params.aspectRatio} --v 6.0`;
     // Cleanup double periods
     finalPrompt = finalPrompt.replace(/\.\./g, ".").replace(/\s\./g, ".");
   } else {
-    // Generic (Stable Diffusion) prefers: Subject, Action, Env, Style, Keywords
-    const qualityTags = "masterpiece, best quality, 8k, ultra-detailed, cinematic lighting, sharp focus";
-    const corePrompt = joinParts([subjectSegment, actionSegment, envSegment, styleSegment], ", ");
-    finalPrompt = `${corePrompt}, ${qualityTags}`;
+    // --- GENERIC / STABLE DIFFUSION LOGIC ---
+    // Uses natural language for AR, specific quality tags, comma separated
+    const qualityTags = getQualityTags(params.style);
+    const arDescription = getNaturalAspectRatio(params.aspectRatio);
+    
+    // Construct components array to ensure clean commas
+    const components = [
+      subjectSegment,
+      actionSegment,
+      envSegment,
+      styleSegment,
+      arDescription, // "cinematic 16:9" instead of "--ar 16:9"
+      qualityTags
+    ];
+
+    finalPrompt = joinParts(components, ", ");
   }
 
   return finalPrompt;
