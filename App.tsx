@@ -234,8 +234,8 @@ const App: React.FC = () => {
       aspectRatio: getRandom(C.ASPECT_RATIOS),
     }));
     help(
-        "Protocolo Caos ejecutado. Se han seleccionado parámetros aleatorios para romper bloqueos creativos.",
-        "Chaos Protocol executed. Random parameters selected to break creative blocks."
+        "⚡ PROTOCOLO FRANKENSTEIN EJECUTADO: Se han ensamblado componentes genéticos aleatorios para crear una nueva forma de vida.",
+        "⚡ FRANKENSTEIN PROTOCOL EXECUTED: Random genetic components assembled to create a new lifeform."
     );
   };
 
@@ -272,7 +272,7 @@ const App: React.FC = () => {
       btnCopyLive: "COPIAR BASE",
       btnGenerate: "MEJORAR CON IA (SINGLE)",
       btnPsyche: "PROTOCOLO PSYCHE (SHEETS)",
-      btnRandom: "PROTOCOLO CAOS",
+      btnRandom: "PROTOCOLO FRANKENSTEIN",
       btnElite: "DESPLEGAR AGENTE DE ÉLITE",
       btnLoading: "OPTIMIZANDO NEURONAS...",
       
@@ -328,7 +328,7 @@ const App: React.FC = () => {
       btnCopyLive: "COPY BASE",
       btnGenerate: "ENHANCE WITH AI (SINGLE)",
       btnPsyche: "PSYCHE PROTOCOL (SHEETS)",
-      btnRandom: "CHAOS PROTOCOL",
+      btnRandom: "FRANKENSTEIN PROTOCOL",
       btnElite: "DEPLOY ELITE AGENT",
       btnLoading: "OPTIMIZING NEURONAS...",
       
@@ -534,6 +534,41 @@ const App: React.FC = () => {
           />
         </div>
 
+        {/* FRANKENSTEIN PROTOCOL BUTTON (New Location) */}
+        <div className="flex justify-center mb-8 relative z-30">
+             <button
+                onClick={handleRandomize}
+                onMouseEnter={() => {
+                  sfx.playHover();
+                  help(
+                      "⚡ PROTOCOLO FRANKENSTEIN: Generación aleatoria total. Mezcla ADN, profesiones y estéticas de forma impredecible.", 
+                      "⚡ FRANKENSTEIN PROTOCOL: Total random generation. Mixes DNA, professions, and aesthetics unpredictably."
+                  );
+                }}
+                className="group relative w-full max-w-xl mx-auto overflow-hidden bg-slate-900 border border-purple-500/50 hover:border-purple-400 transition-all rounded-sm py-4 shadow-[0_0_20px_rgba(168,85,247,0.1)] hover:shadow-[0_0_30px_rgba(168,85,247,0.3)]"
+             >
+                {/* Background Animation */}
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-900/40 via-transparent to-green-900/40 opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10"></div>
+                
+                {/* Content */}
+                <span className="relative z-10 flex flex-col items-center gap-1">
+                    <span className="flex items-center gap-3 text-purple-400 font-brand font-bold text-lg md:text-xl tracking-[0.2em] group-hover:text-purple-300 uppercase shadow-black drop-shadow-md">
+                         <svg className="w-5 h-5 animate-pulse text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>
+                         {t.btnRandom}
+                         <svg className="w-5 h-5 animate-pulse text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>
+                    </span>
+                    <span className="text-[10px] text-green-500/80 font-mono tracking-widest uppercase">
+                        [ GENERACIÓN BIOMÉTRICA ALEATORIA ]
+                    </span>
+                </span>
+                
+                {/* Glitch Borders */}
+                <span className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-purple-500 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-700"></span>
+                <span className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-green-500 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-700 delay-100"></span>
+             </button>
+        </div>
+
         {/* Main Form Interface */}
         <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800 p-6 md:p-8 rounded-lg relative shadow-2xl shadow-cyan-900/10">
            {/* Decorative Corners */}
@@ -541,18 +576,6 @@ const App: React.FC = () => {
            <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyan-500 rounded-tr-lg"></div>
            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-cyan-500 rounded-bl-lg"></div>
            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-cyan-500 rounded-br-lg"></div>
-
-            {/* RANDOMIZER BUTTON */}
-            <div className="absolute -top-5 right-10 md:right-20 z-20">
-              <button 
-                onClick={handleRandomize}
-                onMouseEnter={() => sfx.playHover()}
-                className="bg-slate-950 border border-purple-500/50 text-purple-400 hover:text-white hover:bg-purple-900/30 hover:border-purple-400 px-4 py-1 text-[10px] uppercase font-bold tracking-widest transition-all shadow-[0_0_10px_rgba(168,85,247,0.2)] flex items-center gap-2 group"
-              >
-                <svg className="w-3 h-3 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                {t.btnRandom}
-              </button>
-            </div>
 
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-2">
               {/* SECTION 1: IDENTITY */}
