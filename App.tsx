@@ -102,7 +102,7 @@ const App: React.FC = () => {
         setTimeout(() => document.getElementById('expression-section')?.scrollIntoView({ behavior: 'smooth' }), 100);
     } catch (error) {
         console.error(error);
-        setErrorMsg(lang === 'ES' ? "Error generando protocolo Psyche." : "Error generating Psyche protocol.");
+        setErrorMsg(lang === 'ES' ? "Error generando protocolo Psyche (Revisa API KEY)." : "Error generating Psyche protocol (Check API KEY).");
         setLoadingState(LoadingState.ERROR);
     }
   };
@@ -248,7 +248,7 @@ const App: React.FC = () => {
       btnLoading: "OPTIMIZANDO NEURONAS...",
       
       errorRequired: "Selecciona al menos Raza y Clase o añade detalles.",
-      errorApi: "Error crítico en núcleo IA.",
+      errorApi: "Error crítico: Verifica tu API Key.",
       
       psycheTitle: "HOJAS DE MODELADO (CHARACTER SHEETS)",
       btnCopyAllMJ: "COPIAR COMANDOS MIDJOURNEY (LISTA)",
@@ -304,7 +304,7 @@ const App: React.FC = () => {
       btnLoading: "OPTIMIZING NEURONS...",
       
       errorRequired: "Select at least Race and Class or add details.",
-      errorApi: "Critical AI Core Error.",
+      errorApi: "Critical Error: Check API Key.",
 
       psycheTitle: "CHARACTER MODEL SHEETS",
       btnCopyAllMJ: "COPY MIDJOURNEY COMMANDS (LIST)",
@@ -725,5 +725,9 @@ const SocialIcon: React.FC<{href: string, icon: string}> = ({href, icon}) => (
 );
 
 const container = document.getElementById('root');
-const root = createRoot(container!);
-root.render(<App />);
+if (container) {
+  const root = createRoot(container);
+  root.render(<App />);
+} else {
+  console.error("CRITICAL: Root element not found.");
+}

@@ -1,12 +1,20 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { CharacterParams, GeneratedData, ExpressionEntry } from "../types";
 
-// Forzamos a TypeScript a confiar en que la API Key existe y es un texto
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-
 const modelId = "gemini-2.5-flash";
 
+// Helper para obtener la instancia de IA solo cuando se necesita
+const getAI = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API Key no configurada. Por favor revisa tu archivo .env o configuración de Vercel.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
+
 export const generatePrompt = async (params: CharacterParams): Promise<GeneratedData> => {
+  const ai = getAI(); // Inicialización Lazy
+  
   const isVideo = params.mode === 'video';
   const isMJ = params.promptFormat === 'midjourney';
 
@@ -93,6 +101,8 @@ export const generatePrompt = async (params: CharacterParams): Promise<Generated
  * PROTOCOLO PSYCHE 2.0: Genera 4 Hojas de Modelo maestras.
  */
 export const generateExpressionSheet = async (params: CharacterParams): Promise<ExpressionEntry[]> => {
+  const ai = getAI(); // Inicialización Lazy
+
   const isMJ = params.promptFormat === 'midjourney';
   const aspectRatio = "--ar 3:2"; // Apaisado forzado para Character Sheets
 
