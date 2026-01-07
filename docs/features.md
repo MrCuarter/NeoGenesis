@@ -9,13 +9,14 @@ NeoGenesis v7.0 incluye las siguientes capacidades técnicas:
 
 ## Integración IA (Services/GeminiService)
 *   **Modelo:** Google Gemini 2.5 Flash.
-*   **Safety Margins:** Instrucciones específicas en el *System Prompt* para evitar que las figuras se solapen en las hojas de personaje ("Distinct separation", "Wide spacing").
-*   **JSON Enforcement:** La IA siempre responde en JSON estructurado, garantizando que la aplicación nunca se rompa por un formato de texto incorrecto.
+*   **System Instructions:** Prompts de sistema optimizados para actuar como directores de arte o escritores de ciencia ficción según la tarea.
+*   **JSON Enforcement:** La IA siempre responde en JSON estructurado, garantizando la estabilidad de la aplicación.
 
 ## Componentes UI
 *   **ColorPicker Inteligente:** Permite selección múltiple de colores Hexadecimales con previsualización visual.
 *   **FuturisticSelect:** Componente de selección personalizado con decoraciones CSS puras.
 *   **TerminalOutput:** Visor de resultados con efecto de escaneo y botones de copiado rápido.
+*   **QuickDesignWizard:** Sistema de pasos auto-expandible basado en la compleción de datos.
 
 ## Gestión de Estado
 *   **Local Storage:** Persistencia de historial (últimos 20 items) en el navegador del usuario.

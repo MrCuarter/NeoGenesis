@@ -7,13 +7,14 @@ NeoGenesis es una aplicación web avanzada diseñada para optimizar la creación
 
 ## 🚀 Características Principales
 
+*   **Agente de Élite:** Generación automática de personajes optimizados para formato móvil (9:16) con un solo clic.
+*   **Genome Chaos:** Motor de aleatoriedad total para inspiración creativa en modo avanzado.
 *   **Doble Motor de Diseño:**
-    *   **Quick Mode (Wizard):** Asistente paso a paso para usuarios móviles o creaciones rápidas.
-    *   **Advanced Mode (Grid):** Panel de control profesional con acceso total a 50+ parámetros simultáneos.
-*   **Gestión de Colores Simétrica:** Control preciso de colores (Hex) para Piel, Pelo, Ojos y Equipo (soportando heterocromía y tonos duales).
+    *   **Quick Mode (Wizard):** Asistente paso a paso simplificado.
+    *   **Advanced Mode (Grid):** Panel de control profesional con acceso total a 50+ parámetros.
 *   **Protocolo PSYCHE:** Genera automáticamente un "Character Design Kit" de 7 imágenes coherentes (Vistas técnicas, cinemáticas, expresiones y tokens VTT).
-*   **Generador de Inventario:** Crea hojas de sprites o "knolling" del equipamiento del personaje.
-*   **Live Buffer:** Previsualización en tiempo real del prompt crudo antes de enviarlo a la IA.
+*   **Archivos Narrativos:** Generación de Lore (Historia, Nombre, Psicología) en tiempo real.
+*   **Live Buffer:** Previsualización en tiempo real del prompt crudo.
 *   **Memory Core:** Historial local persistente de tus últimas creaciones.
 
 ## 🛠️ Instalación y Despliegue
@@ -46,9 +47,10 @@ npm run build
 
 ## 📚 Documentación
 *   [Guía de Usuario](docs/user_guide.md)
-*   [Características Detalladas](docs/features.md)
 *   [Manual Funcional](docs/manual_funcional.md)
 
 ## 🎨 Créditos
 Desarrollado con pasión utilizando la pila tecnológica moderna de React.
 Diseño visual inspirado en interfaces Cyberpunk/Sci-Fi.
+
+**Contacto:** [mistercuarter.es](https://mistercuarter.es) | Norberto Cuartero
