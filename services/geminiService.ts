@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { CharacterParams, GeneratedData, ExpressionEntry } from "../types";
+import { CharacterParams, GeneratedData, ExpressionEntry, LoreData, Language } from "../types";
 
 const modelId = "gemini-2.5-flash";
 
@@ -155,7 +155,7 @@ export const generatePrompt = async (params: CharacterParams): Promise<Generated
 };
 
 /**
- * PROTOCOLO PSYCHE 7.3: Anchored Consistency & Casual Triptych
+ * PROTOCOLO PSYCHE 7.4: Master Anchor & Variations
  */
 export const generateExpressionSheet = async (params: CharacterParams): Promise<ExpressionEntry[]> => {
   let ai;
@@ -166,20 +166,35 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
     throw new Error(e.message);
   }
 
+  // --- STEP 1: GENERATE THE MASTER ANCHOR ---
+  // We call generatePrompt first to ensure the exact same logic as the "Mejorar Descripción" button.
+  // This guarantees consistency.
+  let anchorPrompt = "";
+  try {
+      const anchorData = await generatePrompt(params);
+      anchorPrompt = anchorData.prompt;
+  } catch (e) {
+      console.error("Failed to generate anchor prompt", e);
+      throw new Error("Failed to initialize Psyche Protocol Anchor.");
+  }
+
+  // --- STEP 2: GENERATE THE VARIATIONS ---
   const isMJ = params.promptFormat === 'midjourney';
   const inputData = buildInputData(params, false); 
   
   const systemInstruction = `
     You are the "Director of Character Consistency" for a Concept Art studio.
-    Your goal is to generate a JSON Array of 7 Prompts based on the Input Data.
-
-    ### STRATEGY: THE ANCHOR & THE FLOW
     
-    **PROMPT 1: THE ANCHOR ("Personaje potenciado con IA")**
-    - This is the Masterpiece. Use the FULL, detailed visual description provided in Input Data.
-    - This defines the Source of Truth for the character's look.
+    ### INPUT CONTEXT
+    I will provide you with a **MASTER PROMPT** (The "Anchor"). This is the approved, high-end description of the character.
+    
+    ### YOUR TASK
+    Generate a JSON Array of 7 Prompts based on the Input Data and the MASTER PROMPT.
 
-    **PROMPTS 2-7: THE VARIATIONS (Action Mode)**
+    **PROMPT 1: THE ANCHOR**
+    - This MUST be the "MASTER PROMPT" exactly as provided. Do not change it.
+
+    **PROMPTS 2-7: THE VARIATIONS**
     - **CRITICAL:** Do NOT repeat the full physical description of the character (e.g., do not list hair color, armor details again) unless absolutely necessary for the action.
     - **MANDATORY COMMAND:** Start prompts 2-7 with: "Maintain strict consistency with the previously generated character. [Insert specific Action/Framing here]...".
     - Focus strictly on the **POSE**, **ACTION**, and **FRAMING** specific to that sheet type.
@@ -191,7 +206,7 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
       '- Use descriptive natural language tags.\n- **FORBIDDEN:** Do NOT use "--ar" parameters in Generic Mode. Instead, use words like "Vertical format", "Square format", "Wide format".'}
 
     ### THE 7 REQUIRED PROMPTS:
-    1. **"Personaje potenciado con IA"**: The main artistic shot. FULL DESCRIPTION HERE.
+    1. **"Personaje potenciado con IA"**: The MASTER PROMPT provided.
     2. **"CASUAL TRIPTYCH"**: 3 distinct, casual, habitual poses. No T-Pose. Example: One w/ arms crossed looking at camera, one smiling with thumbs up, one with hands on hips/waist. Wide spacing. Solid White BG.
     3. **"ACTION DYNAMICS"**: 3 distinct combat/movement poses. Non-overlapping. Solid White BG.
     4. **"EXPRESSION GRID"**: 2x3 grid of facial emotions. Focus on face. Solid White BG.
@@ -200,7 +215,15 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
     7. **"VICTORY POSE"**: A full-body heroic pose showing the character in their prime.
   `;
 
-  const userPrompt = `${inputData}\n\nGenerate the 7-Prompt Design Kit. Output JSON Array.`;
+  const userPrompt = `
+    MASTER PROMPT (Source of Truth):
+    ${anchorPrompt}
+
+    RAW PARAMS:
+    ${inputData}
+
+    Generate the 7-Prompt Design Kit. Output JSON Array.
+  `;
 
   const responseSchema: Schema = {
     type: Type.ARRAY,
@@ -230,11 +253,12 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
     
     const sheet = JSON.parse(jsonText) as ExpressionEntry[];
 
-    // --- CRITICAL: INJECT ELITE PREAMBLE TO THE FIRST PROMPT ONLY ---
+    // --- CRITICAL: FORCE OVERWRITE THE FIRST PROMPT ---
+    // Even if Gemini tried to summarize it, we overwrite it with the real Anchor Prompt
+    // to ensure 100% parity with the single generation button.
     if (sheet.length > 0) {
-        // Force correct label
         sheet[0].label = "Personaje potenciado con IA";
-        sheet[0].prompt = `${ELITE_PREAMBLE}\n\n${sheet[0].prompt}`;
+        sheet[0].prompt = anchorPrompt;
     }
 
     return sheet;
@@ -306,4 +330,74 @@ export const generateInventoryPrompt = async (params: CharacterParams): Promise<
     if (!jsonText) throw new Error("No response text");
 
     return JSON.parse(jsonText) as GeneratedData;
+};
+
+/**
+ * LORE ENGINE: Generación de Narrativa
+ */
+export const generateLore = async (params: CharacterParams, lang: Language): Promise<LoreData> => {
+  let ai;
+  try {
+    ai = getAI();
+  } catch (e: any) {
+    throw new Error(e.message);
+  }
+
+  const inputData = buildInputData(params, false);
+
+  const languageInstruction = lang === 'ES' 
+    ? "OUTPUT LANGUAGE: SPANISH (Español). You MUST write the name, backstory, motivation, fear, and personality traits IN SPANISH."
+    : "OUTPUT LANGUAGE: ENGLISH.";
+
+  const systemInstruction = `
+    You are a best-selling Sci-Fi/Fantasy novelist and expert RPG Narrative Designer (D&D, Cyberpunk, Pathfinder).
+    Your task is to create a compelling, deep, and unique backstory for the character described in the input.
+
+    ### CREATIVE GUIDELINES
+    - **Name & Epithet:** Create a name that fits their race/culture perfectly. Add a cool epithet (e.g., "The Iron Saint", "Void-Walker").
+    - **Tone:** Match the visual style (e.g., if "Gothic", use melancholic language; if "Cyberpunk", use slang/tech terms).
+    - **Backstory:** Write a 1-paragraph summary of their origin, a key tragedy or success, and why they are adventuring now.
+    - **Psychology:** Define their core motivation (what drives them) and their deepest fear.
+    - **Alignment:** Use a Moral Alignment (e.g., "Chaotic Neutral", "Lawful Good") but explain it briefly.
+
+    ### CRITICAL: LANGUAGE
+    ${languageInstruction}
+
+    Output strict JSON.
+  `;
+
+  const responseSchema: Schema = {
+    type: Type.OBJECT,
+    properties: {
+      name: { type: Type.STRING },
+      epithet: { type: Type.STRING },
+      alignment: { type: Type.STRING },
+      personality: { type: Type.ARRAY, items: { type: Type.STRING } },
+      backstory: { type: Type.STRING },
+      motivation: { type: Type.STRING },
+      fear: { type: Type.STRING }
+    },
+    required: ["name", "epithet", "backstory", "personality", "motivation", "fear", "alignment"]
+  };
+
+  try {
+    const response = await ai.models.generateContent({
+      model: modelId,
+      contents: `${inputData}\n\nGenerate Character Biography & Lore.`,
+      config: {
+        systemInstruction,
+        responseMimeType: "application/json",
+        responseSchema,
+      },
+    });
+
+    const jsonText = response.text;
+    if (!jsonText) throw new Error("No lore generated");
+
+    return JSON.parse(jsonText) as LoreData;
+
+  } catch (error) {
+    console.error("Lore generation failed:", error);
+    throw error;
+  }
 };

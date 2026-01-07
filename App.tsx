@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FuturisticSelect } from './components/FuturisticSelect';
 import { FuturisticInput } from './components/FuturisticInput';
 import { FuturisticToggle } from './components/FuturisticToggle';
@@ -8,9 +8,10 @@ import { TerminalOutput } from './components/TerminalOutput';
 import { QuickDesignWizard } from './components/QuickDesignWizard';
 import { AssistantHud } from './components/AssistantHud';
 import { HistorySidebar } from './components/HistorySidebar'; 
-import { generatePrompt, generateExpressionSheet, generateInventoryPrompt } from './services/geminiService';
+import { generatePrompt, generateExpressionSheet, generateInventoryPrompt, generateLore } from './services/geminiService';
+import { generateDossier } from './services/documentService';
 import { buildLocalPrompt } from './services/promptBuilder'; 
-import { CharacterParams, GeneratedData, LoadingState, Language, ExpressionEntry } from './types';
+import { CharacterParams, GeneratedData, LoadingState, Language, ExpressionEntry, LoreData } from './types';
 import * as C from './constants';
 import { sfx } from './services/audioEngine';
 
@@ -52,12 +53,18 @@ const App: React.FC = () => {
   const [copiedLive, setCopiedLive] = useState(false);
   const [expressionSheet, setExpressionSheet] = useState<ExpressionEntry[] | null>(null);
   const [inventoryData, setInventoryData] = useState<GeneratedData | null>(null);
+  const [loreData, setLoreData] = useState<LoreData | null>(null); 
+  const [dossierImage, setDossierImage] = useState<string | null>(null); // Image for Docx
+  
   const [copiedInventory, setCopiedInventory] = useState(false);
+  const [copiedLore, setCopiedLore] = useState(false);
   const [copiedMatrixIndex, setCopiedMatrixIndex] = useState<number | null>(null);
   const [copiedAllExpressions, setCopiedAllExpressions] = useState(false);
   const [generatedData, setGeneratedData] = useState<GeneratedData | null>(null);
   const [loadingState, setLoadingState] = useState<LoadingState>(LoadingState.IDLE);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load History
   useEffect(() => {
@@ -128,7 +135,7 @@ const App: React.FC = () => {
 
   const handleGenerateExpressions = async () => {
       sfx.playClick(); if (!validateParams()) return;
-      setLoadingState(LoadingState.LOADING); setGeneratedData(null); setExpressionSheet(null); setInventoryData(null); setErrorMsg(null);
+      setLoadingState(LoadingState.LOADING); setGeneratedData(null); setExpressionSheet(null); setInventoryData(null); setLoreData(null); setErrorMsg(null);
       try {
           const sheet = await generateExpressionSheet(params);
           setExpressionSheet(sheet); setLoadingState(LoadingState.SUCCESS); sfx.playSuccess();
@@ -146,9 +153,37 @@ const App: React.FC = () => {
       } catch (error) { setErrorMsg("API Error (Check Console)"); setLoadingState(LoadingState.ERROR); }
   };
 
+  const handleGenerateLore = async () => {
+      sfx.playClick(); if (!validateParams()) return;
+      setLoadingState(LoadingState.LOADING); setLoreData(null); setDossierImage(null); setErrorMsg(null);
+      try {
+          const result = await generateLore(params, lang);
+          setLoreData(result); setLoadingState(LoadingState.SUCCESS); sfx.playSuccess();
+          setTimeout(() => document.getElementById('lore-section')?.scrollIntoView({ behavior: 'smooth' }), 100);
+      } catch (error) { setErrorMsg("API Error (Check Console)"); setLoadingState(LoadingState.ERROR); }
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+              setDossierImage(reader.result as string);
+              sfx.playSuccess();
+          };
+          reader.readAsDataURL(file);
+      }
+  };
+
+  const handleExportDossier = async () => {
+      if (!loreData) return;
+      sfx.playClick();
+      await generateDossier(loreData, params, dossierImage);
+  };
+
   const handleGenerate = async () => {
       sfx.playClick(); if (!validateParams()) return;
-      setLoadingState(LoadingState.LOADING); setErrorMsg(null); setGeneratedData(null); setExpressionSheet(null); setInventoryData(null);
+      setLoadingState(LoadingState.LOADING); setErrorMsg(null); setGeneratedData(null); setExpressionSheet(null); setInventoryData(null); setLoreData(null);
       try {
           const result = await generatePrompt(params);
           setGeneratedData(result); addToHistory(result); setLoadingState(LoadingState.SUCCESS); sfx.playSuccess();
@@ -162,6 +197,14 @@ const App: React.FC = () => {
   const handleCopyInventory = () => {
       if (!inventoryData) return;
       sfx.playClick(); navigator.clipboard.writeText(inventoryData.prompt); setCopiedInventory(true); setTimeout(() => setCopiedInventory(false), 2000);
+  };
+
+  const handleCopyLore = () => {
+      if (!loreData) return;
+      sfx.playClick(); 
+      const text = `NAME: ${loreData.name} "${loreData.epithet}"\nALIGNMENT: ${loreData.alignment}\n\nBIO: ${loreData.backstory}\n\nMOTIVATION: ${loreData.motivation}\nFEAR: ${loreData.fear}`;
+      navigator.clipboard.writeText(text); 
+      setCopiedLore(true); setTimeout(() => setCopiedLore(false), 2000);
   };
 
   const handleCopyAllExpressions = () => {
@@ -182,7 +225,7 @@ const App: React.FC = () => {
 
   // GENOME EXPERIMENT
   const getRandom = (arr: any[]) => arr && arr.length > 0 ? arr[Math.floor(Math.random() * arr.length)].value : '';
-  const getRandomColors = (count: number) => Array.from({length: count}, () => C.SKIN_TONES[Math.floor(Math.random() * C.SKIN_TONES.length)].value); // Fallback color gen
+  const getRandomColors = (count: number) => Array.from({length: count}, () => C.SKIN_TONES[Math.floor(Math.random() * C.SKIN_TONES.length)].value); 
 
   const handleRandomize = () => {
     sfx.playClick();
@@ -249,8 +292,9 @@ const App: React.FC = () => {
            {params.designMode === 'quick' ? (
                <QuickDesignWizard lang={lang} params={params} setParams={setParams} onComplete={() => document.querySelector('#generate-controls')?.scrollIntoView({ behavior: 'smooth' })} />
            ) : (
-               /* --- ADVANCED MODE: NEW GRID LAYOUT --- */
+               /* --- ADVANCED MODE (SAME AS BEFORE) --- */
                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 animate-fade-in">
+                  {/* ... (Existing Columns Logic) ... */}
                   
                   {/* COL 1: CORE IDENTITY */}
                   <div className="space-y-4 border-b xl:border-b-0 xl:border-r border-slate-800 pb-4 xl:pb-0 xl:pr-4">
@@ -284,14 +328,13 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* COL 2: HEAD & FACE (Symmetric Color Pickers) */}
+                  {/* COL 2: HEAD & FACE */}
                   <div className="space-y-4 border-b xl:border-b-0 xl:border-r border-slate-800 pb-4 xl:pb-0 xl:pr-4">
                     <div className="flex items-center gap-2 border-b border-cyan-900 pb-2 mb-4">
                         <span className="text-cyan-500 font-mono text-xl font-bold">02</span>
                         <h3 className="text-slate-300 font-brand tracking-widest text-sm uppercase">Face & Head</h3>
                     </div>
 
-                    {/* Skin: w-20 to match Hair */}
                     <div className="flex gap-2 items-end">
                          <div className="flex-grow">
                             <FuturisticSelect label="Piel (Tono)" value={params.skinTone} onChange={(v) => setParams(prev => ({...prev, skinTone: v}))} options={mapOpts(C.SKIN_TONES)} />
@@ -301,7 +344,6 @@ const App: React.FC = () => {
                          </div>
                     </div>
 
-                    {/* Hair */}
                     <div className="flex gap-2 items-end">
                         <div className="flex-grow">
                              <FuturisticSelect label="Estilo Pelo" value={params.hairStyle} onChange={(v) => setParams(prev => ({...prev, hairStyle: v}))} options={mapOpts(C.HAIR_STYLES)} />
@@ -311,7 +353,6 @@ const App: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Eyes: w-20 to match others */}
                     <div className="flex gap-2 items-end">
                         <div className="flex-grow">
                              <FuturisticSelect label="Rasgo Ojos" value={params.eyeFeature} onChange={(v) => setParams(prev => ({...prev, eyeFeature: v}))} options={mapOpts(C.EYE_FEATURES)} />
@@ -328,14 +369,13 @@ const App: React.FC = () => {
                     <FuturisticSelect label="Marcas Faciales" value={params.faceMarkings} onChange={(v) => setParams(prev => ({...prev, faceMarkings: v}))} options={mapOpts(C.FACE_MARKINGS)} />
                   </div>
 
-                  {/* COL 3: OUTFIT & GEAR */}
+                  {/* COL 3: OUTFIT */}
                   <div className="space-y-4 border-b xl:border-b-0 xl:border-r border-slate-800 pb-4 xl:pb-0 xl:pr-4">
                     <div className="flex items-center gap-2 border-b border-cyan-900 pb-2 mb-4">
                         <span className="text-cyan-500 font-mono text-xl font-bold">03</span>
                         <h3 className="text-slate-300 font-brand tracking-widest text-sm uppercase">Outfit & Gear</h3>
                     </div>
 
-                    {/* Clean Color Picker */}
                     <div className="mb-4">
                          <ColorPicker label="Colores de Equipo (Principal & Secundario)" selectedColors={params.outfitColors} onChange={(c) => setParams(prev => ({...prev, outfitColors: c}))} maxColors={2} />
                     </div>
@@ -359,7 +399,7 @@ const App: React.FC = () => {
                     <FuturisticSelect label="Item en Mano" value={params.heldItem} onChange={(v) => setParams(prev => ({...prev, heldItem: v}))} options={mapOpts(C.HELD_ITEMS)} />
                   </div>
 
-                  {/* COL 4: STYLE & VIBES */}
+                  {/* COL 4: STYLE */}
                   <div className="space-y-4 border-b xl:border-b-0 xl:border-r border-slate-800 pb-4 xl:pb-0 xl:pr-4">
                      <div className="flex items-center gap-2 border-b border-cyan-900 pb-2 mb-4">
                         <span className="text-cyan-500 font-mono text-xl font-bold">04</span>
@@ -374,7 +414,7 @@ const App: React.FC = () => {
                      </div>
                   </div>
                   
-                  {/* COL 5: ENVIRONMENT & RENDER */}
+                  {/* COL 5: WORLD */}
                    <div className="space-y-4">
                      <div className="flex items-center gap-2 border-b border-cyan-900 pb-2 mb-4">
                         <span className="text-cyan-500 font-mono text-xl font-bold">05</span>
@@ -391,7 +431,6 @@ const App: React.FC = () => {
                      <FuturisticSelect label="Aspect Ratio" value={params.aspectRatio} onChange={(v) => setParams(prev => ({...prev, aspectRatio: v}))} options={C.ASPECT_RATIOS} />
                   </div>
 
-                   {/* FULL WIDTH DETAILS */}
                    <div className="col-span-1 md:col-span-2 xl:col-span-5 mt-4 pt-4 border-t border-slate-700">
                       <FuturisticInput label="Detalles Específicos (Escribe libremente...)" value={params.details} onChange={(v) => setParams(prev => ({...prev, details: v}))} placeholder="Ej: Cicatriz brillante en forma de rayo, espada con runas azules..." multiline />
                    </div>
@@ -407,7 +446,7 @@ const App: React.FC = () => {
                 <div className="font-mono text-sm text-slate-300 min-h-[50px] whitespace-pre-wrap">{livePrompt}</div>
            </div>
 
-           <div className="mt-6 flex flex-col md:flex-row gap-4">
+           <div className="mt-6 flex flex-col xl:flex-row gap-4">
                <button onClick={handleGenerate} className="flex-1 bg-cyan-600/20 border border-cyan-500 text-cyan-400 py-4 font-bold tracking-[0.2em] hover:bg-cyan-500 hover:text-black transition-all rounded-sm uppercase flex items-center justify-center gap-2 group">
                   <span className="group-hover:translate-x-1 transition-transform">Mejorar descripción con IA</span>
                </button>
@@ -417,12 +456,100 @@ const App: React.FC = () => {
                <button onClick={handleGenerateExpressions} className="flex-1 bg-amber-600/20 border border-amber-500 text-amber-400 py-4 font-bold tracking-[0.2em] hover:bg-amber-500 hover:text-black transition-all rounded-sm uppercase flex items-center justify-center gap-2 group">
                    <span className="group-hover:translate-x-1 transition-transform">Psyche Protocol (Sheets)</span>
                </button>
+               <button onClick={handleGenerateLore} className="flex-1 bg-violet-600/20 border border-violet-500 text-violet-400 py-4 font-bold tracking-[0.2em] hover:bg-violet-500 hover:text-black transition-all rounded-sm uppercase flex items-center justify-center gap-2 group">
+                   <span className="group-hover:translate-x-1 transition-transform">Narrative Archives</span>
+               </button>
            </div>
            
            {errorMsg && <div className="mt-4 text-red-500 text-center font-mono bg-red-950/20 border border-red-900/50 p-2">{errorMsg}</div>}
         </div>
 
-        {/* OUTPUT: INVENTORY */}
+        {/* OUTPUT: LORE (NARRATIVE) */}
+        {loreData && (
+             <div id="lore-section" className="mt-12 p-8 bg-slate-900/90 border-t-2 border-violet-500 rounded-sm animate-slide-up relative shadow-[0_0_50px_rgba(139,92,246,0.15)]">
+                 <div className="absolute top-4 right-4 flex gap-2">
+                     <button onClick={handleCopyLore} className="text-violet-500 border border-violet-500/50 px-4 py-2 text-xs hover:bg-violet-500 hover:text-black transition-colors uppercase font-bold tracking-widest">{copiedLore ? 'COPIED' : 'COPY TEXT'}</button>
+                     <button onClick={handleExportDossier} className="bg-violet-900/50 text-white border border-violet-500 px-4 py-2 text-xs hover:bg-violet-500 hover:text-black transition-colors uppercase font-bold tracking-widest flex items-center gap-2">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        EXPORT DOSSIER (.DOCX)
+                     </button>
+                 </div>
+
+                 <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 bg-violet-900/50 flex items-center justify-center border border-violet-500 rounded-full">
+                        <svg className="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                    </div>
+                    <div>
+                        <h3 className="text-violet-400 font-brand text-2xl tracking-widest uppercase">Biographical Data Log</h3>
+                        <p className="text-slate-500 text-xs font-mono">FILE CLASSIFICATION: CONFIDENTIAL</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="md:col-span-2 space-y-4">
+                        <div className="bg-black/40 p-6 rounded border border-violet-900/30">
+                            <h4 className="text-violet-300 font-bold uppercase tracking-wider text-sm mb-2 border-b border-violet-900/50 pb-2">Full Name & Alias</h4>
+                            <p className="text-2xl text-white font-brand">{loreData.name}</p>
+                            <p className="text-violet-400 italic">"{loreData.epithet}"</p>
+                        </div>
+                        <div className="bg-black/40 p-6 rounded border border-violet-900/30">
+                            <h4 className="text-violet-300 font-bold uppercase tracking-wider text-sm mb-2 border-b border-violet-900/50 pb-2">Background History</h4>
+                            <p className="font-mono text-slate-300 leading-relaxed text-sm whitespace-pre-wrap">{loreData.backstory}</p>
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        {/* IMAGE UPLOAD ZONE */}
+                        <div className="bg-black/40 p-6 rounded border border-violet-900/30 flex flex-col items-center justify-center text-center relative group">
+                            <h4 className="text-violet-300 font-bold uppercase tracking-wider text-sm mb-4 border-b border-violet-900/50 pb-2 w-full text-left">Visual Identification</h4>
+                            
+                            {dossierImage ? (
+                                <div className="relative w-full aspect-square bg-black border border-violet-500 rounded overflow-hidden group-hover:border-white transition-colors">
+                                    <img src={dossierImage} alt="Profile" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                    <button onClick={() => setDossierImage(null)} className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold">×</button>
+                                </div>
+                            ) : (
+                                <div 
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="w-full aspect-square border-2 border-dashed border-violet-900/50 hover:border-violet-500 hover:bg-violet-900/10 transition-all rounded flex flex-col items-center justify-center cursor-pointer p-4"
+                                >
+                                    <svg className="w-10 h-10 text-violet-500/50 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                    <span className="text-xs text-violet-400 font-bold uppercase">Upload Generated Portrait</span>
+                                    <span className="text-[10px] text-slate-500 mt-1">(Click to select file)</span>
+                                </div>
+                            )}
+                            <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+                            <p className="text-[10px] text-slate-500 mt-2 font-mono">Upload the image you generated in Midjourney to include it in the exported dossier.</p>
+                        </div>
+
+                         <div className="bg-black/40 p-6 rounded border border-violet-900/30">
+                            <h4 className="text-violet-300 font-bold uppercase tracking-wider text-sm mb-2 border-b border-violet-900/50 pb-2">Psych Profile</h4>
+                            <div className="mb-4">
+                                <span className="text-[10px] text-slate-500 uppercase block">Alignment</span>
+                                <span className="text-white font-mono">{loreData.alignment}</span>
+                            </div>
+                            <div className="mb-4">
+                                <span className="text-[10px] text-slate-500 uppercase block">Core Motivation</span>
+                                <span className="text-emerald-400 font-mono text-sm">{loreData.motivation}</span>
+                            </div>
+                            <div>
+                                <span className="text-[10px] text-slate-500 uppercase block">Deepest Fear</span>
+                                <span className="text-red-400 font-mono text-sm">{loreData.fear}</span>
+                            </div>
+                         </div>
+                         <div className="bg-black/40 p-6 rounded border border-violet-900/30">
+                             <h4 className="text-violet-300 font-bold uppercase tracking-wider text-sm mb-2 border-b border-violet-900/50 pb-2">Personality Tags</h4>
+                             <div className="flex flex-wrap gap-2">
+                                 {loreData.personality.map((tag, i) => (
+                                     <span key={i} className="px-2 py-1 bg-violet-900/30 border border-violet-500/30 rounded text-[10px] text-violet-200 uppercase">{tag}</span>
+                                 ))}
+                             </div>
+                         </div>
+                    </div>
+                </div>
+             </div>
+        )}
+        
+        {/* ... (Rest of existing output sections) ... */}
         {inventoryData && (
              <div id="inventory-section" className="mt-12 p-8 bg-slate-900/90 border-t-2 border-emerald-500 rounded-sm animate-slide-up relative shadow-[0_0_50px_rgba(16,185,129,0.1)]">
                 <button onClick={handleCopyInventory} className="absolute top-4 right-4 text-emerald-500 border border-emerald-500/50 px-4 py-2 text-xs hover:bg-emerald-500 hover:text-black transition-colors uppercase font-bold tracking-widest">{copiedInventory ? 'COPIED' : 'COPY PROMPT'}</button>
@@ -441,7 +568,6 @@ const App: React.FC = () => {
              </div>
         )}
 
-        {/* OUTPUT: PSYCHE SHEETS */}
         {expressionSheet && (
              <div id="expression-section" className="mt-16 animate-slide-up">
                  <div className="flex flex-col md:flex-row justify-between items-center mb-8 border-b border-amber-900/50 pb-4">
@@ -454,7 +580,6 @@ const App: React.FC = () => {
                  
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      {expressionSheet.map((item, i) => {
-                         // --- LOGIC CHANGE: First Prompt Highlight ---
                          const isFirst = i === 0;
                          const boxClass = isFirst 
                             ? "md:col-span-2 bg-slate-900/80 border-2 border-cyan-500 p-8 rounded-sm hover:bg-slate-900/90 shadow-[0_0_20px_rgba(6,182,212,0.2)]" 

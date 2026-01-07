@@ -66,6 +66,16 @@ export interface GeneratedData {
   modelParams?: Partial<CharacterParams>;
 }
 
+export interface LoreData {
+  name: string;
+  epithet: string; // e.g. "The Shadow Walker"
+  alignment: string; // D&D style or Moral Compass
+  personality: string[]; // Keywords
+  backstory: string; // Short bio
+  motivation: string;
+  fear: string;
+}
+
 export interface ExpressionEntry {
   label: string;
   prompt: string;
