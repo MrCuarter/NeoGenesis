@@ -155,7 +155,7 @@ export const generatePrompt = async (params: CharacterParams): Promise<Generated
 };
 
 /**
- * PROTOCOLO PSYCHE 7.2: Token Sheets Update
+ * PROTOCOLO PSYCHE 7.3: Anchored Consistency & Casual Triptych
  */
 export const generateExpressionSheet = async (params: CharacterParams): Promise<ExpressionEntry[]> => {
   let ai;
@@ -169,25 +169,20 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
   const isMJ = params.promptFormat === 'midjourney';
   const inputData = buildInputData(params, false); 
   
-  // Extraemos rasgos clave para forzar la consistencia
-  const coreIdentity = `${params.race} ${params.role} ${params.gender}`;
-  const appearance = `${params.hairColors?.join("&")} ${params.hairStyle}, ${params.skinTone}, ${params.outfitColors?.join("&")} outfit`;
-
   const systemInstruction = `
     You are the "Director of Character Consistency" for a Concept Art studio.
     Your goal is to generate a JSON Array of 7 Prompts based on the Input Data.
 
-    ### STRATEGY: ABSOLUTE CONSISTENCY
+    ### STRATEGY: THE ANCHOR & THE FLOW
     
     **PROMPT 1: THE ANCHOR ("Personaje potenciado con IA")**
-    - This is the Masterpiece. Use the exact Lighting, Framing, and Style requested.
+    - This is the Masterpiece. Use the FULL, detailed visual description provided in Input Data.
     - This defines the Source of Truth for the character's look.
 
-    **PROMPTS 2-7: THE VARIATIONS (Consistency Mode)**
-    - **CRITICAL:** In EVERY single prompt from 2 to 7, you MUST explicitly describe the character again to ensure the AI doesn't hallucinate a new person.
-    - **MANDATORY INJECTION:** You must include this phrase in prompts 2-7: "Character consistency: ${coreIdentity}, ${appearance}".
-    - Do NOT rely on "same character as above". You must describe them again.
-    - Change only the pose, framing, and action suitable for the specific sheet type.
+    **PROMPTS 2-7: THE VARIATIONS (Action Mode)**
+    - **CRITICAL:** Do NOT repeat the full physical description of the character (e.g., do not list hair color, armor details again) unless absolutely necessary for the action.
+    - **MANDATORY COMMAND:** Start prompts 2-7 with: "Maintain strict consistency with the previously generated character. [Insert specific Action/Framing here]...".
+    - Focus strictly on the **POSE**, **ACTION**, and **FRAMING** specific to that sheet type.
     - **SAFETY MARGINS:** For sheets (Arch, Action, Expressions), ensure figures do NOT touch. Use "Solid White Background".
 
     ### FORMATTING RULES (STRICT)
@@ -196,11 +191,11 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
       '- Use descriptive natural language tags.\n- **FORBIDDEN:** Do NOT use "--ar" parameters in Generic Mode. Instead, use words like "Vertical format", "Square format", "Wide format".'}
 
     ### THE 7 REQUIRED PROMPTS:
-    1. **"Personaje potenciado con IA"**: The main artistic shot.
-    2. **"ARCHITECTURE TRIPTYCH"**: Front view, Side view, Back view. T-Pose or A-Pose. Wide spacing. Solid White BG.
+    1. **"Personaje potenciado con IA"**: The main artistic shot. FULL DESCRIPTION HERE.
+    2. **"CASUAL TRIPTYCH"**: 3 distinct, casual, habitual poses. No T-Pose. Example: One w/ arms crossed looking at camera, one smiling with thumbs up, one with hands on hips/waist. Wide spacing. Solid White BG.
     3. **"ACTION DYNAMICS"**: 3 distinct combat/movement poses. Non-overlapping. Solid White BG.
     4. **"EXPRESSION GRID"**: 2x3 grid of facial emotions. Focus on face. Solid White BG.
-    5. **"TOKEN SHEET COLLECTION"**: A cinematic 16:9 image showing **6 distinctive RPG Tokens** arranged in 2 rows of 3. Center the character's bust in each. **CRITICAL:** The token borders/frames must be highly elaborate and constructed from materials specific to the character's class/lore (e.g., glowing neon metal, ancient runic stone, twisted vines, polished obsidian). Use the character's exact color palette. High quality, game-ready assets. Solid White Background.
+    5. **"TOKEN SHEET COLLECTION"**: A cinematic 16:9 image showing **6 distinctive RPG Tokens** arranged in 2 rows of 3. Center the character's bust in each. The token borders/frames must be highly elaborate and constructed from materials specific to the character's class/lore. High quality, game-ready assets. Solid White Background.
     6. **"GEAR KNOLLING"**: The character's items (Weapons, Accessories) laid out on a flat surface. Top-down view.
     7. **"VICTORY POSE"**: A full-body heroic pose showing the character in their prime.
   `;

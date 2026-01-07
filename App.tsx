@@ -451,18 +451,34 @@ const App: React.FC = () => {
                      </div>
                      <button onClick={handleCopyAllExpressions} className="mt-4 md:mt-0 text-amber-400 border border-amber-500/50 px-6 py-3 hover:bg-amber-500 hover:text-black transition-colors font-bold text-xs uppercase tracking-widest">{copiedAllExpressions ? 'ALL COPIED' : 'COPY ALL SHEETS'}</button>
                  </div>
+                 
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     {expressionSheet.map((item, i) => (
-                         <div key={i} className="bg-slate-900/60 border border-amber-900/30 p-6 rounded-sm hover:border-amber-500/50 transition-colors relative group">
-                             <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                 <button onClick={() => handleCopyMatrixItem(item.prompt, i)} className="text-amber-500 hover:text-white text-xs uppercase font-bold tracking-wider">{copiedMatrixIndex === i ? 'COPIED' : 'COPY'}</button>
-                             </div>
-                             <div className="mb-4">
-                                 <span className="text-amber-500 text-[10px] font-bold uppercase tracking-[0.2em] bg-amber-950/30 px-2 py-1 rounded border border-amber-900/50">{item.label}</span>
-                             </div>
-                             <p className="text-xs text-slate-300 font-mono leading-relaxed border-l-2 border-amber-900/50 pl-4 group-hover:border-amber-500 transition-colors">{item.prompt}</p>
-                         </div>
-                     ))}
+                     {expressionSheet.map((item, i) => {
+                         // --- LOGIC CHANGE: First Prompt Highlight ---
+                         const isFirst = i === 0;
+                         const boxClass = isFirst 
+                            ? "md:col-span-2 bg-slate-900/80 border-2 border-cyan-500 p-8 rounded-sm hover:bg-slate-900/90 shadow-[0_0_20px_rgba(6,182,212,0.2)]" 
+                            : "bg-slate-900/60 border border-amber-900/30 p-6 rounded-sm hover:border-amber-500/50";
+                         
+                         const textClass = isFirst 
+                            ? "text-sm text-cyan-100 font-mono leading-relaxed" 
+                            : "text-xs text-slate-300 font-mono leading-relaxed";
+
+                         const labelColor = isFirst ? "text-cyan-400 border-cyan-500 bg-cyan-950/50" : "text-amber-500 border-amber-900/50 bg-amber-950/30";
+
+                         return (
+                            <div key={i} className={`${boxClass} transition-colors relative group`}>
+                                <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => handleCopyMatrixItem(item.prompt, i)} className="text-white bg-black/50 hover:bg-white hover:text-black px-2 py-1 rounded text-xs uppercase font-bold tracking-wider">{copiedMatrixIndex === i ? 'COPIED' : 'COPY'}</button>
+                                </div>
+                                <div className="mb-4 flex flex-wrap items-center gap-2">
+                                    <span className={`${labelColor} text-[10px] font-bold uppercase tracking-[0.2em] px-2 py-1 rounded border`}>{item.label}</span>
+                                    {isFirst && <span className="text-[10px] text-cyan-500 font-bold uppercase tracking-wider animate-pulse">(Usa siempre este prompt primero)</span>}
+                                </div>
+                                <p className={`${textClass} border-l-2 ${isFirst ? 'border-cyan-500' : 'border-amber-900/50 group-hover:border-amber-500'} pl-4 transition-colors`}>{item.prompt}</p>
+                            </div>
+                         );
+                     })}
                  </div>
              </div>
         )}
