@@ -1,10 +1,15 @@
 
-import { Document, Packer, Paragraph, TextRun, ImageRun, HeadingLevel, AlignmentType, BorderStyle, Table, TableRow, TableCell, WidthType } from "docx";
+import { Document, Packer, Paragraph, TextRun, ImageRun, HeadingLevel, AlignmentType, BorderStyle, Table, TableRow, TableCell, WidthType, ExternalHyperlink } from "docx";
 import saveAs from "file-saver";
 import { LoreData, CharacterParams } from "../types";
 
 export const generateDossier = async (lore: LoreData, params: CharacterParams, imageBlob: string | null) => {
   
+  // Fuentes temáticas (deben estar instaladas en el PC del usuario para verse igual, si no Word usará fallback)
+  const fontTitle = "Orbitron";
+  const fontBody = "Rajdhani";
+  const fontTech = "Courier New"; // Para el sello de secreto
+
   const children = [];
 
   // 1. HEADER: CONFIDENTIAL STAMP
@@ -13,10 +18,10 @@ export const generateDossier = async (lore: LoreData, params: CharacterParams, i
       alignment: AlignmentType.RIGHT,
       children: [
         new TextRun({
-          text: "CLASSIFIED // TOP SECRET",
+          text: "CLASIFICADO // ALTO SECRETO",
           bold: true,
           color: "FF0000",
-          font: "Courier New",
+          font: fontTech,
           size: 24,
         }),
       ],
@@ -31,9 +36,9 @@ export const generateDossier = async (lore: LoreData, params: CharacterParams, i
       heading: HeadingLevel.TITLE,
       children: [
         new TextRun({
-          text: `SUBJECT: ${lore.name.toUpperCase()}`,
+          text: `SUJETO: ${lore.name.toUpperCase()}`,
           bold: true,
-          font: "Arial Black",
+          font: fontTitle,
           size: 48,
           color: "2E2E2E"
         }),
@@ -48,7 +53,7 @@ export const generateDossier = async (lore: LoreData, params: CharacterParams, i
             new TextRun({
                 text: `ALIAS: "${lore.epithet.toUpperCase()}"`,
                 italics: true,
-                font: "Courier New",
+                font: fontTech,
                 size: 28
             })
         ]
@@ -95,9 +100,9 @@ export const generateDossier = async (lore: LoreData, params: CharacterParams, i
             alignment: AlignmentType.CENTER,
             children: [
                 new TextRun({
-                    text: "[ IMAGE NOT AVAILABLE - UPLOAD PENDING ]",
+                    text: "[ IMAGEN NO DISPONIBLE - PENDIENTE DE CARGA ]",
                     color: "999999",
-                    font: "Courier New"
+                    font: fontTech
                 })
             ],
             border: {
@@ -114,39 +119,35 @@ export const generateDossier = async (lore: LoreData, params: CharacterParams, i
   // 4. BIOGRAPHICAL DATA (TABLE)
   children.push(
       new Paragraph({
-          text: "I. BIOGRAPHICAL DATA",
+          children: [
+              new TextRun({
+                  text: "I. DATOS BIOGRÁFICOS",
+                  font: fontTitle,
+                  bold: true,
+                  size: 28
+              })
+          ],
           heading: HeadingLevel.HEADING_2,
           spacing: { before: 400, after: 200 }
       })
   );
 
+  const createRow = (label: string, value: string) => {
+      return new TableRow({
+          children: [
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, font: fontBody })] })] }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: value, font: fontBody })] })] }),
+          ]
+      });
+  };
+
   const bioTable = new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
-          new TableRow({
-              children: [
-                  new TableCell({ children: [new Paragraph({ text: "RACE / SPECIES:", bold: true })] }),
-                  new TableCell({ children: [new Paragraph(params.race)] }),
-              ]
-          }),
-          new TableRow({
-              children: [
-                  new TableCell({ children: [new Paragraph({ text: "GENDER:", bold: true })] }),
-                  new TableCell({ children: [new Paragraph(params.gender)] }),
-              ]
-          }),
-           new TableRow({
-              children: [
-                  new TableCell({ children: [new Paragraph({ text: "ROLE / CLASS:", bold: true })] }),
-                  new TableCell({ children: [new Paragraph(`${params.role} ${params.secondaryRole ? '/ ' + params.secondaryRole : ''}`)] }),
-              ]
-          }),
-           new TableRow({
-              children: [
-                  new TableCell({ children: [new Paragraph({ text: "ALIGNMENT:", bold: true })] }),
-                  new TableCell({ children: [new Paragraph(lore.alignment)] }),
-              ]
-          }),
+          createRow("RAZA / ESPECIE:", params.race),
+          createRow("GÉNERO:", params.gender),
+          createRow("ROL / CLASE:", `${params.role} ${params.secondaryRole ? '/ ' + params.secondaryRole : ''}`),
+          createRow("ALINEAMIENTO:", lore.alignment),
       ]
   });
   children.push(bioTable);
@@ -154,28 +155,35 @@ export const generateDossier = async (lore: LoreData, params: CharacterParams, i
   // 5. NARRATIVE PROFILE
   children.push(
       new Paragraph({
-          text: "II. PSYCHOLOGICAL PROFILE",
+          children: [
+              new TextRun({
+                  text: "II. PERFIL PSICOLÓGICO",
+                  font: fontTitle,
+                  bold: true,
+                  size: 28
+              })
+          ],
           heading: HeadingLevel.HEADING_2,
           spacing: { before: 400, after: 200 }
       }),
       new Paragraph({
           children: [
-              new TextRun({ text: "MOTIVATION: ", bold: true }),
-              new TextRun(lore.motivation)
+              new TextRun({ text: "MOTIVACIÓN: ", bold: true, font: fontBody }),
+              new TextRun({ text: lore.motivation, font: fontBody })
           ],
           bullet: { level: 0 }
       }),
       new Paragraph({
           children: [
-              new TextRun({ text: "DEEPEST FEAR: ", bold: true }),
-              new TextRun(lore.fear)
+              new TextRun({ text: "MIEDO PROFUNDO: ", bold: true, font: fontBody }),
+              new TextRun({ text: lore.fear, font: fontBody })
           ],
            bullet: { level: 0 }
       }),
        new Paragraph({
           children: [
-              new TextRun({ text: "PERSONALITY TRAITS: ", bold: true }),
-              new TextRun(lore.personality.join(", "))
+              new TextRun({ text: "RASGOS DE PERSONALIDAD: ", bold: true, font: fontBody }),
+              new TextRun({ text: lore.personality.join(", "), font: fontBody })
           ],
            bullet: { level: 0 }
       })
@@ -184,12 +192,24 @@ export const generateDossier = async (lore: LoreData, params: CharacterParams, i
   // 6. BACKSTORY
   children.push(
       new Paragraph({
-          text: "III. HISTORICAL RECORD",
+          children: [
+              new TextRun({
+                  text: "III. REGISTRO HISTÓRICO",
+                  font: fontTitle,
+                  bold: true,
+                  size: 28
+              })
+          ],
           heading: HeadingLevel.HEADING_2,
           spacing: { before: 400, after: 200 }
       }),
       new Paragraph({
-          text: lore.backstory,
+          children: [
+              new TextRun({
+                  text: lore.backstory,
+                  font: fontBody
+              })
+          ],
           alignment: AlignmentType.JUSTIFIED,
           spacing: { line: 276 } // 1.15 spacing
       })
@@ -198,15 +218,38 @@ export const generateDossier = async (lore: LoreData, params: CharacterParams, i
    // 7. FOOTER
    children.push(
        new Paragraph({
-           text: "Generated by NeoGenesis Prompt Architect",
            alignment: AlignmentType.CENTER,
            spacing: { before: 800 },
            children: [
                 new TextRun({
+                    text: "Diseñado por ",
                     size: 16,
                     color: "666666",
-                    italics: true
+                    font: fontBody
+                }),
+                new TextRun({
+                    text: "Norberto Cuartero",
+                    bold: true,
+                    size: 16,
+                    color: "666666",
+                    font: fontBody
                 })
+           ]
+       }),
+       new Paragraph({
+           alignment: AlignmentType.CENTER,
+           children: [
+                new ExternalHyperlink({
+                    children: [
+                        new TextRun({
+                            text: "mistercuarter.es",
+                            style: "Hyperlink",
+                            size: 16,
+                            font: fontBody
+                        }),
+                    ],
+                    link: "https://mistercuarter.es",
+                }),
            ]
        })
    );
@@ -219,5 +262,5 @@ export const generateDossier = async (lore: LoreData, params: CharacterParams, i
   });
 
   const buffer = await Packer.toBlob(doc);
-  saveAs(buffer, `Dossier_${lore.name.replace(/\s/g, "_")}.docx`);
+  saveAs(buffer, `Expediente_${lore.name.replace(/\s/g, "_")}.docx`);
 };
