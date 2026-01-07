@@ -197,40 +197,103 @@ const App: React.FC = () => {
   const getRandom = (arr: any[]) => arr && arr.length > 0 ? arr[Math.floor(Math.random() * arr.length)].value : '';
   const getRandomColors = (count: number) => Array.from({length: count}, () => C.SKIN_TONES[Math.floor(Math.random() * C.SKIN_TONES.length)].value); // Fallback to skin tones for colors if needed, or specific palettes
 
-  // ELITE AGENT: QUICK MODE RANDOM
-  const handleElitePreset = () => {
+  // ELITE AGENT: QUICK MODE SEQUENTIAL
+  const handleElitePreset = async () => {
     sfx.playClick();
     
-    // Determine random category first to filter roles
+    // 1. Calculate values
     const category = Math.random() > 0.5 ? 'fantasy' : 'realistic';
     const roles = category === 'fantasy' ? C.ROLES_FANTASY : C.ROLES_REALISTIC;
 
+    const targetValues = {
+        gender: getRandom(C.GENDERS),
+        race: getRandom(C.RACES),
+        skinTone: getRandom(C.SKIN_TONES),
+        classCategory: category,
+        role: getRandom(roles),
+        emotion: getRandom(C.EMOTIONS),
+        style: getRandom(C.STYLES),
+        // FIXED VALUES
+        secondaryRole: '', // "Saltar/Ninguna"
+        framing: 'Full body shot showing shoes to head', // MANDATORY: Cuerpo Entero
+        setting: 'Isolated on Solid White background', // Fondo Blanco
+        aspectRatio: '--ar 9:16', // Movil (9:16)
+        details: 'Elite Unit',
+    };
+
+    // 2. Reset and switch to Quick Mode
     setParams(prev => ({
        ...prev,
        designMode: 'quick',
        mode: 'image',
        promptFormat: 'midjourney',
-
-       // RANDOMIZED FIELDS
-       gender: getRandom(C.GENDERS),
-       race: getRandom(C.RACES),
-       skinTone: getRandom(C.SKIN_TONES),
-       classCategory: category,
-       role: getRandom(roles),
-       emotion: getRandom(C.EMOTIONS),
-       style: getRandom(C.STYLES),
-       
-       // FIXED DEFAULTS (Requested)
-       secondaryRole: '', // "Saltar/Ninguna"
-       framing: 'Full Body shot showing shoes to head', // Cuerpo Entero
-       setting: 'Isolated on Solid White background', // Fondo Blanco
-       aspectRatio: '--ar 9:16', // Movil (9:16)
-
-       // Reset extras to avoid leakage
-       details: 'Elite Unit',
+       // Clear critical fields to allow visual fill-up
+       race: '', gender: '', role: '', skinTone: '', emotion: '', style: '',
        skinColor: [], hairColors: [], eyeColors: [], outfitColors: []
     }));
-    help("Agente Élite generado en Modo Rápido.", "Elite Agent generated in Quick Mode.");
+
+    help("Inicializando secuencia de Agente Élite...", "Initializing Elite Agent sequence...");
+
+    // 3. Helper for delay
+    const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+    // 4. Sequential Filling
+    // Step 1: Gender
+    await delay(500);
+    setParams(prev => ({ ...prev, gender: targetValues.gender }));
+    sfx.playClick();
+
+    // Step 2: Race
+    await delay(500);
+    setParams(prev => ({ ...prev, race: targetValues.race }));
+    sfx.playClick();
+
+    // Step 3: Skin
+    await delay(500);
+    setParams(prev => ({ ...prev, skinTone: targetValues.skinTone }));
+    sfx.playClick();
+
+    // Step 4: Category
+    await delay(500);
+    setParams(prev => ({ ...prev, classCategory: targetValues.classCategory as 'fantasy' | 'realistic' }));
+    sfx.playClick();
+
+    // Step 5: Role
+    await delay(500);
+    setParams(prev => ({ ...prev, role: targetValues.role }));
+    sfx.playClick();
+
+    // Step 6: Secondary Role (Skip)
+    await delay(500);
+    setParams(prev => ({ ...prev, secondaryRole: targetValues.secondaryRole }));
+    sfx.playClick();
+
+    // Step 7: Emotion
+    await delay(500);
+    setParams(prev => ({ ...prev, emotion: targetValues.emotion }));
+    sfx.playClick();
+
+    // Step 8: Style
+    await delay(500);
+    setParams(prev => ({ ...prev, style: targetValues.style }));
+    sfx.playClick();
+
+    // Step 9: Framing (Full Body Forced)
+    await delay(500);
+    setParams(prev => ({ ...prev, framing: targetValues.framing }));
+    sfx.playClick();
+
+    // Step 10: Setting (White)
+    await delay(500);
+    setParams(prev => ({ ...prev, setting: targetValues.setting }));
+    sfx.playClick();
+
+    // Step 11: AR
+    await delay(500);
+    setParams(prev => ({ ...prev, aspectRatio: targetValues.aspectRatio, details: targetValues.details }));
+    
+    sfx.playSuccess();
+    help("Agente Élite generado.", "Elite Agent generated.");
   };
 
   // GENOME CHAOS: ADVANCED MODE FULL RANDOM
@@ -314,7 +377,10 @@ const App: React.FC = () => {
            <a href="https://mistercuarter.es" target="_blank" rel="noopener noreferrer" className="inline-block text-cyan-500 font-mono text-sm tracking-[0.3em] hover:text-white transition-colors mb-6 border-b border-cyan-900 hover:border-cyan-400 pb-1">mistercuarter.es</a>
 
            <div className="flex justify-center gap-4 flex-wrap mt-4">
-              <button onClick={handleElitePreset} className="border border-cyan-500 text-cyan-400 px-6 py-2 uppercase text-sm tracking-widest hover:bg-cyan-900/30 transition-all font-bold">ELITE AGENT</button>
+              <button onClick={handleElitePreset} className="border border-cyan-500 text-cyan-400 px-6 py-2 uppercase text-sm tracking-widest hover:bg-cyan-900/30 transition-all font-bold flex items-center gap-2">
+                 <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></span>
+                 ELITE AGENT
+              </button>
               <button onClick={handleRandomize} className="border border-purple-500 text-purple-400 px-6 py-2 uppercase text-sm tracking-widest hover:bg-purple-900/30 transition-all font-bold">GENOME CHAOS</button>
            </div>
         </header>

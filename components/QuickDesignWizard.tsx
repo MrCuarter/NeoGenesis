@@ -31,15 +31,29 @@ export const QuickDesignWizard: React.FC<QuickDesignWizardProps> = ({ lang, para
     { id: 11, key: 'aspectRatio', titleEs: "Formato", titleEn: "Format" },
   ];
 
-  // Auto-expand if params are pre-filled (Elite Agent)
+  // Auto-expand based on filled params (Supports Elite Agent sequential filling)
   useEffect(() => {
-    // Check if the last critical step (aspectRatio) is filled
-    if (params.aspectRatio && params.aspectRatio !== '--ar 16:9' && visibleSteps === 1) {
-       // Only if it's not default or specifically set (Elite sets it to 9:16)
-       // Actually, Elite Agent sets many things. If race, role and setting are set, expand all.
-       if (params.race && params.role && params.setting) {
-           setVisibleSteps(stepsConfig.length);
-       }
+    let nextStep = 1;
+    
+    if (params.gender) nextStep = 2;
+    if (params.gender && params.race) nextStep = 3;
+    if (params.race && params.skinTone) nextStep = 4;
+    // Step 4 is category (boolean/string), usually set if race is set
+    if (params.skinTone && params.classCategory) nextStep = 5;
+    if (params.role) nextStep = 6;
+    // Step 6 is secondary role (optional). If set OR strictly empty string (skipped), move on
+    if (params.role && typeof params.secondaryRole === 'string') nextStep = 7;
+    if (params.emotion) nextStep = 8;
+    if (params.style) nextStep = 9;
+    if (params.framing) nextStep = 10;
+    if (params.setting) nextStep = 11;
+    if (params.aspectRatio && params.aspectRatio !== '--ar 16:9') {
+        // Only if fully complete
+        nextStep = 11; 
+    }
+
+    if (nextStep > visibleSteps) {
+        setVisibleSteps(nextStep);
     }
   }, [params]);
 
