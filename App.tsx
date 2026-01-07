@@ -226,7 +226,7 @@ const App: React.FC = () => {
        ...prev,
        designMode: 'quick',
        mode: 'image',
-       promptFormat: 'midjourney',
+       promptFormat: 'generic',
        // Clear critical fields to allow visual fill-up
        race: '', gender: '', role: '', skinTone: '', emotion: '', style: '',
        skinColor: [], hairColors: [], eyeColors: [], outfitColors: []

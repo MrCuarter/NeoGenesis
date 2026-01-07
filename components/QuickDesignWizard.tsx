@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { FuturisticInput } from './FuturisticInput';
 import * as C from '../constants';
 import { CharacterParams, Language } from '../types';
 import { sfx } from '../services/audioEngine';
@@ -10,6 +11,34 @@ interface QuickDesignWizardProps {
   setParams: React.Dispatch<React.SetStateAction<CharacterParams>>;
   onComplete: () => void;
 }
+
+// Helper para generar sugerencias inteligentes basadas en el contexto del personaje
+const getDetailSuggestion = (params: CharacterParams, lang: Language) => {
+    const isEs = lang === 'ES';
+    const role = params.role || '';
+    const race = params.race || '';
+    const style = params.style || '';
+
+    if (race.includes('Cyborg') || race.includes('Android') || role.includes('Hacker') || role.includes('Pilot')) 
+        return isEs ? "Cables brillantes expuestos en el cuello, código fluyendo en los ojos, brazo mecánico dañado..." : "Glowing exposed wires on neck, code flowing in eyes, damaged mechanical arm...";
+    
+    if (role.includes('Warrior') || role.includes('Soldier') || role.includes('Mercenary') || role.includes('Paladin')) 
+        return isEs ? "Cicatriz en el ojo izquierdo, armadura desgastada por la batalla, emblema del clan en el pecho..." : "Scar on left eye, battle-worn armor, clan emblem on chest...";
+        
+    if (role.includes('Mage') || role.includes('Wizard') || role.includes('Witch') || role.includes('Druid')) 
+        return isEs ? "Libro de hechizos flotando, runas moradas en el aire, ojos brillantes de energía..." : "Floating spellbook, purple runes in the air, eyes glowing with energy...";
+        
+    if (role.includes('Rogue') || role.includes('Assassin') || role.includes('Thief')) 
+        return isEs ? "Daga oculta en la manga, capucha oscura cubriendo el rostro, moneda de oro entre los dedos..." : "Hidden dagger in sleeve, dark hood covering face, gold coin between fingers...";
+
+    if (race.includes('Elf') || race.includes('Fairy')) 
+        return isEs ? "Orejas decoradas con joyas élficas, flores entrelazadas en el pelo, luz etérea..." : "Jeweled elven ears, flowers intertwined in hair, ethereal light...";
+    
+    if (race.includes('Vampire') || race.includes('Demon') || race.includes('Undead'))
+        return isEs ? "Colmillos afilados goteando, ojos rojos intensos, niebla oscura alrededor..." : "Sharp dripping fangs, intense red eyes, dark mist surrounding...";
+
+    return isEs ? "Tatuaje de dragón en el brazo, colgante misterioso brillante, mascota pequeña en el hombro..." : "Dragon tattoo on arm, glowing mysterious pendant, small pet on shoulder...";
+};
 
 export const QuickDesignWizard: React.FC<QuickDesignWizardProps> = ({ lang, params, setParams, onComplete }) => {
   // We keep track of how many steps are visible
@@ -23,12 +52,13 @@ export const QuickDesignWizard: React.FC<QuickDesignWizardProps> = ({ lang, para
     { id: 3, key: 'skinTone', titleEs: "Tono de Piel", titleEn: "Skin Tone" },
     { id: 4, key: 'classCategory', titleEs: "Categoría de Clase", titleEn: "Class Category" },
     { id: 5, key: 'role', titleEs: "Elige Profesión / Clase", titleEn: "Choose Profession / Class" },
-    { id: 6, key: 'secondaryRole', titleEs: "Clase Secundaria (Opcional)", titleEn: "Secondary Class (Optional)" }, // NEW STEP
+    { id: 6, key: 'secondaryRole', titleEs: "Clase Secundaria (Opcional)", titleEn: "Secondary Class (Optional)" },
     { id: 7, key: 'emotion', titleEs: "Carácter / Emoción", titleEn: "Character / Emotion" },
     { id: 8, key: 'style', titleEs: "Estilo Visual", titleEn: "Visual Style" },
     { id: 9, key: 'framing', titleEs: "Encuadre de Cámara", titleEn: "Camera Framing" },
     { id: 10, key: 'setting', titleEs: "Fondo / Entorno", titleEn: "Background / Setting" },
     { id: 11, key: 'aspectRatio', titleEs: "Formato", titleEn: "Format" },
+    { id: 12, key: 'details', titleEs: "¿Quieres añadir algo?", titleEn: "Want to add anything specific?" }, // NEW STEP 12
   ];
 
   // Auto-expand based on filled params (Supports Elite Agent sequential filling)
@@ -48,9 +78,11 @@ export const QuickDesignWizard: React.FC<QuickDesignWizardProps> = ({ lang, para
     if (params.framing) nextStep = 10;
     if (params.setting) nextStep = 11;
     if (params.aspectRatio && params.aspectRatio !== '--ar 16:9') {
-        // Only if fully complete
-        nextStep = 11; 
+       // Manual change of AR
+       nextStep = 12;
     }
+    // If AR is set (even default if user confirmed/passed it), go to 12
+    if (params.setting && params.aspectRatio) nextStep = 12;
 
     if (nextStep > visibleSteps) {
         setVisibleSteps(nextStep);
@@ -58,7 +90,11 @@ export const QuickDesignWizard: React.FC<QuickDesignWizardProps> = ({ lang, para
   }, [params]);
 
   const handleSelect = (key: keyof CharacterParams, value: any, stepId: number) => {
-    sfx.playClick();
+    // Play sound unless it's typing (FuturisticInput handles typing sound)
+    if (key !== 'details') {
+        sfx.playClick();
+    }
+    
     setParams(prev => ({ ...prev, [key]: value }));
     
     // Reveal next step if not already revealed
@@ -66,7 +102,9 @@ export const QuickDesignWizard: React.FC<QuickDesignWizardProps> = ({ lang, para
        setVisibleSteps(prev => prev + 1);
     } 
     
-    if (stepId === stepsConfig.length) {
+    // Trigger completion callback only for non-text inputs at the end
+    // For the text input (step 12), we don't trigger onComplete to avoid aggressive scrolling while typing
+    if (stepId === stepsConfig.length && key !== 'details') {
        onComplete();
     }
   };
@@ -139,7 +177,7 @@ export const QuickDesignWizard: React.FC<QuickDesignWizardProps> = ({ lang, para
                  <StepButton label={lang === 'ES' ? "Realista / Actual" : "Realistic / Modern"} value="realistic" active={params.classCategory === 'realistic'} onClick={(v: any) => handleSelect('classCategory', v, 4)} />
              </div>
          );
-      case 5: // ROLE - Single column on mobile for long names
+      case 5: // ROLE
         const roles = params.classCategory === 'realistic' ? C.ROLES_REALISTIC : C.ROLES_FANTASY;
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
@@ -148,13 +186,13 @@ export const QuickDesignWizard: React.FC<QuickDesignWizardProps> = ({ lang, para
                 ))}
             </div>
         );
-      case 6: // SECONDARY ROLE (OPTIONAL)
+      case 6: // SECONDARY ROLE
         const secRoles = params.classCategory === 'realistic' ? C.ROLES_REALISTIC : C.ROLES_FANTASY;
         return (
             <div className="space-y-4">
                 <div className="flex justify-center mb-2">
                     <button 
-                       onClick={() => handleSelect('secondaryRole', '', 6)} // Skip/None option
+                       onClick={() => handleSelect('secondaryRole', '', 6)} 
                        className={`text-xs text-slate-500 hover:text-cyan-400 uppercase tracking-widest border border-slate-700 hover:border-cyan-500 px-4 py-2 rounded-sm ${params.secondaryRole === '' ? 'border-cyan-500 text-cyan-400' : ''}`}
                     >
                        {lang === 'ES' ? "Saltar / Ninguna" : "Skip / None"}
@@ -193,7 +231,6 @@ export const QuickDesignWizard: React.FC<QuickDesignWizardProps> = ({ lang, para
         );
       case 10: // BACKGROUND
         const bgOptions = [...C.SETTINGS.filter(s => s.value.includes('Contextual') || s.value.includes('White') || s.value.includes('Studio')), ...C.BACKGROUNDS];
-        // Unique logic
         const seen = new Set();
         const uniqueBgs = bgOptions.filter(el => {
             const duplicate = seen.has(el.value);
@@ -214,6 +251,19 @@ export const QuickDesignWizard: React.FC<QuickDesignWizardProps> = ({ lang, para
                 {C.ASPECT_RATIOS.map(opt => (
                 <StepButton key={opt.value} label={opt.label} value={opt.value} active={params.aspectRatio === opt.value} onClick={(v: string) => handleSelect('aspectRatio', v, 11)} />
                 ))}
+            </div>
+        );
+      case 12: // DETAILS (NEW)
+        const placeholder = getDetailSuggestion(params, lang);
+        return (
+            <div className="max-w-4xl mx-auto animate-fade-in">
+                <FuturisticInput
+                    label={lang === 'ES' ? "Detalles Específicos (Opcional)" : "Specific Details (Optional)"}
+                    value={params.details}
+                    onChange={(v) => handleSelect('details', v, 12)}
+                    placeholder={placeholder}
+                    multiline
+                />
             </div>
         );
       default:
