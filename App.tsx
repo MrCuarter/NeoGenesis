@@ -9,7 +9,6 @@ import { QuickDesignWizard } from './components/QuickDesignWizard';
 import { AssistantHud } from './components/AssistantHud';
 import { HistorySidebar } from './components/HistorySidebar'; 
 import { generatePrompt, generateExpressionSheet, generateInventoryPrompt, generateLore } from './services/geminiService';
-import { generateDossier } from './services/documentService';
 import { buildLocalPrompt } from './services/promptBuilder'; 
 import { CharacterParams, GeneratedData, LoadingState, Language, ExpressionEntry, LoreData } from './types';
 import * as C from './constants';
@@ -54,7 +53,6 @@ const App: React.FC = () => {
   const [expressionSheet, setExpressionSheet] = useState<ExpressionEntry[] | null>(null);
   const [inventoryData, setInventoryData] = useState<GeneratedData | null>(null);
   const [loreData, setLoreData] = useState<LoreData | null>(null); 
-  const [dossierImage, setDossierImage] = useState<string | null>(null); // Image for Docx
   
   const [copiedInventory, setCopiedInventory] = useState(false);
   const [copiedLore, setCopiedLore] = useState(false);
@@ -63,8 +61,6 @@ const App: React.FC = () => {
   const [generatedData, setGeneratedData] = useState<GeneratedData | null>(null);
   const [loadingState, setLoadingState] = useState<LoadingState>(LoadingState.IDLE);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load History
   useEffect(() => {
@@ -155,30 +151,12 @@ const App: React.FC = () => {
 
   const handleGenerateLore = async () => {
       sfx.playClick(); if (!validateParams()) return;
-      setLoadingState(LoadingState.LOADING); setLoreData(null); setDossierImage(null); setErrorMsg(null);
+      setLoadingState(LoadingState.LOADING); setLoreData(null); setErrorMsg(null);
       try {
           const result = await generateLore(params, lang);
           setLoreData(result); setLoadingState(LoadingState.SUCCESS); sfx.playSuccess();
           setTimeout(() => document.getElementById('lore-section')?.scrollIntoView({ behavior: 'smooth' }), 100);
       } catch (error) { setErrorMsg("API Error (Check Console)"); setLoadingState(LoadingState.ERROR); }
-  };
-
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (file) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-              setDossierImage(reader.result as string);
-              sfx.playSuccess();
-          };
-          reader.readAsDataURL(file);
-      }
-  };
-
-  const handleExportDossier = async () => {
-      if (!loreData) return;
-      sfx.playClick();
-      await generateDossier(loreData, params, dossierImage);
   };
 
   const handleGenerate = async () => {
@@ -529,10 +507,6 @@ const App: React.FC = () => {
              <div id="lore-section" className="mt-12 p-8 bg-slate-900/90 border-t-2 border-violet-500 rounded-sm animate-slide-up relative shadow-[0_0_50px_rgba(139,92,246,0.15)]">
                  <div className="absolute top-4 right-4 flex gap-2">
                      <button onClick={handleCopyLore} className="text-violet-500 border border-violet-500/50 px-4 py-2 text-xs hover:bg-violet-500 hover:text-black transition-colors uppercase font-bold tracking-widest">{copiedLore ? 'COPIED' : 'COPY TEXT'}</button>
-                     <button onClick={handleExportDossier} className="bg-violet-900/50 text-white border border-violet-500 px-4 py-2 text-xs hover:bg-violet-500 hover:text-black transition-colors uppercase font-bold tracking-widest flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                        EXPORT DOSSIER (.DOCX)
-                     </button>
                  </div>
 
                  <div className="flex items-center gap-3 mb-6">
@@ -558,29 +532,6 @@ const App: React.FC = () => {
                         </div>
                     </div>
                     <div className="space-y-4">
-                        {/* IMAGE UPLOAD ZONE */}
-                        <div className="bg-black/40 p-6 rounded border border-violet-900/30 flex flex-col items-center justify-center text-center relative group">
-                            <h4 className="text-violet-300 font-bold uppercase tracking-wider text-sm mb-4 border-b border-violet-900/50 pb-2 w-full text-left">Visual Identification</h4>
-                            
-                            {dossierImage ? (
-                                <div className="relative w-full aspect-square bg-black border border-violet-500 rounded overflow-hidden group-hover:border-white transition-colors">
-                                    <img src={dossierImage} alt="Profile" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                                    <button onClick={() => setDossierImage(null)} className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold">×</button>
-                                </div>
-                            ) : (
-                                <div 
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="w-full aspect-square border-2 border-dashed border-violet-900/50 hover:border-violet-500 hover:bg-violet-900/10 transition-all rounded flex flex-col items-center justify-center cursor-pointer p-4"
-                                >
-                                    <svg className="w-10 h-10 text-violet-500/50 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                    <span className="text-xs text-violet-400 font-bold uppercase">Upload Generated Portrait</span>
-                                    <span className="text-[10px] text-slate-500 mt-1">(Click to select file)</span>
-                                </div>
-                            )}
-                            <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
-                            <p className="text-[10px] text-slate-500 mt-2 font-mono">Upload the image you generated in Midjourney to include it in the exported dossier.</p>
-                        </div>
-
                          <div className="bg-black/40 p-6 rounded border border-violet-900/30">
                             <h4 className="text-violet-300 font-bold uppercase tracking-wider text-sm mb-2 border-b border-violet-900/50 pb-2">Psych Profile</h4>
                             <div className="mb-4">
