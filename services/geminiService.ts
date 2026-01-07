@@ -155,7 +155,7 @@ export const generatePrompt = async (params: CharacterParams): Promise<Generated
 };
 
 /**
- * PROTOCOLO PSYCHE 7.1: Strict Consistency Enforcement & Clean Formatting
+ * PROTOCOLO PSYCHE 7.2: Token Sheets Update
  */
 export const generateExpressionSheet = async (params: CharacterParams): Promise<ExpressionEntry[]> => {
   let ai;
@@ -200,7 +200,7 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
     2. **"ARCHITECTURE TRIPTYCH"**: Front view, Side view, Back view. T-Pose or A-Pose. Wide spacing. Solid White BG.
     3. **"ACTION DYNAMICS"**: 3 distinct combat/movement poses. Non-overlapping. Solid White BG.
     4. **"EXPRESSION GRID"**: 2x3 grid of facial emotions. Focus on face. Solid White BG.
-    5. **"RPG TOKEN"**: Circular or Square framing focused on the head/bust. High contrast.
+    5. **"TOKEN SHEET COLLECTION"**: A cinematic 16:9 image showing **6 distinctive RPG Tokens** arranged in 2 rows of 3. Center the character's bust in each. **CRITICAL:** The token borders/frames must be highly elaborate and constructed from materials specific to the character's class/lore (e.g., glowing neon metal, ancient runic stone, twisted vines, polished obsidian). Use the character's exact color palette. High quality, game-ready assets. Solid White Background.
     6. **"GEAR KNOLLING"**: The character's items (Weapons, Accessories) laid out on a flat surface. Top-down view.
     7. **"VICTORY POSE"**: A full-body heroic pose showing the character in their prime.
   `;
@@ -258,23 +258,57 @@ export const generateInventoryPrompt = async (params: CharacterParams): Promise<
         throw new Error(e.message);
     }
     const isMJ = params.promptFormat === 'midjourney';
+    
+    // Contexto de coherencia (Igual que en Psyche Protocol)
+    const coreIdentity = `${params.race} ${params.role} ${params.gender}`;
+    const appearance = `${params.hairColors?.join("&")} ${params.hairStyle}, ${params.skinTone}, ${params.outfitColors?.join("&")} outfit`;
     const outfitC = params.outfitColors?.join(" and ");
 
     const systemInstruction = `
-        Eres un Diseñador de Assets de Videojuegos.
-        Genera una Hoja de Inventario (Sprite Sheet, Knolling style) para: ${params.race} ${params.role}.
-        Estilo: ${params.style}.
-        Items clave: ${params.heldItem}, ${params.headwear}, ${params.footwear}, ${params.classExtras}.
-        Paleta de items: ${outfitC}.
-        Fondo: Solid White. Objetos separados.
-        Format: ${isMJ ? '/imagine prompt: ... --ar 3:2' : 'Detailed description without --ar parameters'}.
-        OUTPUT ENGLISH.
+        You are a Video Game Asset Designer specialized in Inventory UI.
+        Your task is to generate a Knolling/Sprite Sheet prompt for the EQUIPMENT of a specific character.
+
+        ### CRITICAL: CHARACTER CONSISTENCY
+        You must design the items to strictly fit the visual identity of the following character:
+        - **Identity:** ${coreIdentity}
+        - **Appearance:** ${appearance}
+        - **Style:** ${params.style}
+        
+        The items must look like they belong to THIS specific character (same color palette, same tech level, same aesthetic).
+
+        ### TASK DETAILS
+        - Generate a flat-lay (knolling) composition of: ${params.heldItem}, ${params.headwear}, ${params.footwear}, ${params.classExtras}.
+        - Primary Colors: ${outfitC}.
+        - Background: Solid White (for easy masking).
+        - Perspective: Top-down, organized layout, assets separated.
+
+        ### OUTPUT FORMAT
+        ${isMJ ? 
+            'Start with /imagine prompt: ... and end with --ar 3:2 --no human, body, limbs' : 
+            'Detailed description. Do NOT use --ar parameters. Add "no human characters" to negative prompt.'}
+        
+        Return JSON with "prompt" and "negativePrompt".
     `;
     
     const response = await ai.models.generateContent({
         model: modelId,
-        contents: "Genera prompt inventario.",
-        config: { systemInstruction, responseMimeType: "application/json", responseSchema: { type: Type.OBJECT, properties: { prompt: {type: Type.STRING}, negativePrompt: {type:Type.STRING} } } }
+        contents: "Generate inventory asset prompt.",
+        config: { 
+            systemInstruction, 
+            responseMimeType: "application/json", 
+            responseSchema: { 
+                type: Type.OBJECT, 
+                properties: { 
+                    prompt: {type: Type.STRING}, 
+                    negativePrompt: {type:Type.STRING} 
+                },
+                required: ["prompt", "negativePrompt"]
+            } 
+        }
     });
-    return JSON.parse(response.text!) as GeneratedData;
+    
+    const jsonText = response.text;
+    if (!jsonText) throw new Error("No response text");
+
+    return JSON.parse(jsonText) as GeneratedData;
 };
