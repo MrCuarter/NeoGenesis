@@ -1,5 +1,4 @@
 
-
 // --- IDENTITY ---
 export const RACES = [
   { es: "Humano", en: "Human", value: "Human" },
@@ -414,7 +413,7 @@ export const SETTINGS = [
 
 // Mapped for simpler usage in Quick Mode, keeps compatibility
 export const BACKGROUNDS = [
-  { es: "Detallado", en: "Detailed", value: "Detailed Environment" },
+  { es: "Escenario", en: "Scenery", value: "Detailed Environment" },
   { es: "Simple / Desenfocado", en: "Simple", value: "Blurry Bokeh lights background" },
   { es: "Blanco (Recortar)", en: "Solid White", value: "Isolated on Solid White background" },
   { es: "Verde (Chroma)", en: "Green Screen", value: "Solid Green Screen background" },

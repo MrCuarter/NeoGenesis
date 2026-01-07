@@ -31,6 +31,18 @@ export const QuickDesignWizard: React.FC<QuickDesignWizardProps> = ({ lang, para
     { id: 11, key: 'aspectRatio', titleEs: "Formato", titleEn: "Format" },
   ];
 
+  // Auto-expand if params are pre-filled (Elite Agent)
+  useEffect(() => {
+    // Check if the last critical step (aspectRatio) is filled
+    if (params.aspectRatio && params.aspectRatio !== '--ar 16:9' && visibleSteps === 1) {
+       // Only if it's not default or specifically set (Elite sets it to 9:16)
+       // Actually, Elite Agent sets many things. If race, role and setting are set, expand all.
+       if (params.race && params.role && params.setting) {
+           setVisibleSteps(stepsConfig.length);
+       }
+    }
+  }, [params]);
+
   const handleSelect = (key: keyof CharacterParams, value: any, stepId: number) => {
     sfx.playClick();
     setParams(prev => ({ ...prev, [key]: value }));
@@ -47,7 +59,7 @@ export const QuickDesignWizard: React.FC<QuickDesignWizardProps> = ({ lang, para
 
   // Auto-scroll to bottom when new step is added
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && visibleSteps > 1) {
         // Scroll slightly down to reveal the new section
         const yOffset = -100; // Offset for fixed header
         const element = scrollRef.current;
@@ -129,7 +141,7 @@ export const QuickDesignWizard: React.FC<QuickDesignWizardProps> = ({ lang, para
                 <div className="flex justify-center mb-2">
                     <button 
                        onClick={() => handleSelect('secondaryRole', '', 6)} // Skip/None option
-                       className="text-xs text-slate-500 hover:text-cyan-400 uppercase tracking-widest border border-slate-700 hover:border-cyan-500 px-4 py-2 rounded-sm"
+                       className={`text-xs text-slate-500 hover:text-cyan-400 uppercase tracking-widest border border-slate-700 hover:border-cyan-500 px-4 py-2 rounded-sm ${params.secondaryRole === '' ? 'border-cyan-500 text-cyan-400' : ''}`}
                     >
                        {lang === 'ES' ? "Saltar / Ninguna" : "Skip / None"}
                     </button>

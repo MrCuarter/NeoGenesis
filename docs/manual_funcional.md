@@ -26,18 +26,27 @@ El sistema utiliza la API de **Google Gemini** para enriquecer y estructurar est
 
 ## 3. Herramientas Especiales
 
+### Agente de Élite (Elite Agent)
+Un generador aleatorio inteligente que opera exclusivamente en **Modo Rápido**.
+*   **Funcionamiento:** Selecciona automáticamente opciones aleatorias para Raza, Rol, Género y Estilo, pero mantiene una configuración fija optimizada para personajes de alta calidad en dispositivos móviles.
+*   **Configuración Fija:**
+    *   **Clase Secundaria:** Ninguna.
+    *   **Encuadre:** Cuerpo entero (Full Body).
+    *   **Fondo/Escenario:** Blanco sólido (Isolated on Solid White).
+    *   **Formato:** Móvil (9:16).
+*   **Visualización:** Despliega automáticamente todas las opciones seleccionadas en el Wizard para que el usuario pueda revisarlas antes de generar.
+
+### Caos Genómico (Genome Chaos)
+Un generador de aleatoriedad total que opera en **Modo Avanzado**.
+*   **Funcionamiento:** Activa y rellena absolutamente todos los campos disponibles en la herramienta con valores aleatorios.
+*   **Alcance:** Incluye selección aleatoria de colores de ojos (heterocromía), pelo, equipo, detalles faciales, accesorios y entornos complejos. Ideal para inspiración extrema y resultados inesperados.
+
 ### Protocolo PSYCHE (Character Sheets)
 Esta es la función más potente de la herramienta. En lugar de generar un solo prompt, utiliza IA para crear un **Kit de Diseño Completo** con 4 variaciones coherentes:
 1.  **Hoja de Arquitectura:** Vistas frontal, lateral y trasera (T-Pose).
 2.  **Cortes Cinemáticos:** Primeros planos y tomas de acción.
 3.  **Rango Emocional:** El mismo personaje mostrando diferentes emociones.
 4.  **Insignia/Token VTT:** Un diseño circular o hexagonal listo para usar en tableros virtuales como Roll20.
-
-### Experimentación Genoma (Randomizer)
-Un botón de "Caos Controlado". Genera un personaje completamente aleatorio mezclando razas, clases y estilos artísticos, ideal para superar el bloqueo creativo.
-
-### Agentes de Élite (Presets)
-Perfiles pre-configurados de alta calidad (ej. "Cyber Ronin", "Orc Warlord") que garantizan resultados visualmente impactantes con un solo clic.
 
 ### Memory Core (Historial)
 Un sistema de almacenamiento local que guarda los últimos 20 prompts generados. Permite recuperar configuraciones perdidas si se recarga la página.

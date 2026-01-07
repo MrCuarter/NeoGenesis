@@ -215,45 +215,102 @@ const App: React.FC = () => {
     navigator.clipboard.writeText(intro + body); setCopiedAllExpressions(true); setTimeout(() => setCopiedAllExpressions(false), 2000);
   };
   
-  // ELITE PRESET
+  // HELPERS FOR RANDOMIZERS
+  const getRandom = (arr: any[]) => arr && arr.length > 0 ? arr[Math.floor(Math.random() * arr.length)].value : '';
+  const getRandomColors = (count: number) => Array.from({length: count}, () => C.SKIN_TONES[Math.floor(Math.random() * C.SKIN_TONES.length)].value); // Fallback to skin tones for colors if needed, or specific palettes
+
+  // ELITE AGENT: QUICK MODE RANDOM
   const handleElitePreset = () => {
     sfx.playClick();
-    const randomPreset = C.PRESETS[Math.floor(Math.random() * C.PRESETS.length)];
-    setParams(prev => ({ ...prev, ...randomPreset.params as any, designMode: 'advanced' }));
-    help("Agente Élite desplegado.", "Elite Agent deployed.");
+    
+    // Determine random category first to filter roles
+    const category = Math.random() > 0.5 ? 'fantasy' : 'realistic';
+    const roles = category === 'fantasy' ? C.ROLES_FANTASY : C.ROLES_REALISTIC;
+
+    setParams(prev => ({
+       ...prev,
+       designMode: 'quick',
+       mode: 'image',
+       promptFormat: 'midjourney',
+
+       // RANDOMIZED FIELDS
+       gender: getRandom(C.GENDERS),
+       race: getRandom(C.RACES),
+       skinTone: getRandom(C.SKIN_TONES),
+       classCategory: category,
+       role: getRandom(roles),
+       emotion: getRandom(C.EMOTIONS),
+       style: getRandom(C.STYLES),
+       
+       // FIXED DEFAULTS (Requested)
+       secondaryRole: '', // "Saltar/Ninguna"
+       framing: 'Full Body shot showing shoes to head', // Cuerpo Entero
+       setting: 'Isolated on Solid White background', // Fondo Blanco
+       aspectRatio: '--ar 9:16', // Movil (9:16)
+
+       // Reset extras to avoid leakage
+       details: 'Elite Unit',
+       skinColor: [], hairColors: [], eyeColors: [], outfitColors: []
+    }));
+    help("Agente Élite generado en Modo Rápido.", "Elite Agent generated in Quick Mode.");
   };
 
-  // GENOME EXPERIMENT
-  const getRandom = (arr: any[]) => arr && arr.length > 0 ? arr[Math.floor(Math.random() * arr.length)].value : '';
-  const getRandomColors = (count: number) => Array.from({length: count}, () => C.SKIN_TONES[Math.floor(Math.random() * C.SKIN_TONES.length)].value); 
-
+  // GENOME CHAOS: ADVANCED MODE FULL RANDOM
   const handleRandomize = () => {
     sfx.playClick();
     const isVideo = Math.random() > 0.5;
     const isFantasy = Math.random() > 0.4;
+    
     setParams(prev => ({
       ...prev,
       designMode: 'advanced', mode: isVideo ? 'video' : 'image', classCategory: isFantasy ? 'fantasy' : 'realistic',
-      race: getRandom(C.RACES), gender: getRandom(C.GENDERS), age: getRandom(C.AGES), skinTone: getRandom(C.SKIN_TONES),
-      role: isFantasy ? getRandom(C.ROLES_FANTASY) : getRandom(C.ROLES_REALISTIC), secondaryRole: Math.random() > 0.7 ? getRandom(C.ROLES_FANTASY) : '',
+      
+      // Full Randomization
+      race: getRandom(C.RACES), 
+      gender: getRandom(C.GENDERS), 
+      age: getRandom(C.AGES), 
+      skinTone: getRandom(C.SKIN_TONES), 
+      skinColor: Math.random() > 0.7 ? getRandomColors(1) : [],
+
+      role: isFantasy ? getRandom(C.ROLES_FANTASY) : getRandom(C.ROLES_REALISTIC), 
+      secondaryRole: Math.random() > 0.6 ? (isFantasy ? getRandom(C.ROLES_FANTASY) : getRandom(C.ROLES_REALISTIC)) : '',
+      subRole: Math.random() > 0.8 ? "Legendary" : "",
+      bodyType: getRandom(C.BODY_TYPES),
       
       // Physical
-      hairStyle: getRandom(C.HAIR_STYLES), hairColors: [], eyeFeature: getRandom(C.EYE_FEATURES), eyeColors: [],
-      denture: Math.random() > 0.8 ? getRandom(C.DENTURES) : '', noseShape: getRandom(C.NOSE_SHAPES), faceMarkings: Math.random() > 0.7 ? getRandom(C.FACE_MARKINGS) : 'None',
+      hairStyle: getRandom(C.HAIR_STYLES), 
+      hairColors: Math.random() > 0.6 ? getRandomColors(2) : [],
+      eyeFeature: getRandom(C.EYE_FEATURES), 
+      eyeColors: Math.random() > 0.6 ? getRandomColors(2) : [],
+      denture: Math.random() > 0.8 ? getRandom(C.DENTURES) : '', 
+      noseShape: getRandom(C.NOSE_SHAPES), 
+      faceMarkings: Math.random() > 0.6 ? getRandom(C.FACE_MARKINGS) : 'None',
 
       // Outfit
-      headwear: Math.random() > 0.8 ? getRandom(C.HEADWEAR) : '', 
+      headwear: Math.random() > 0.7 ? getRandom(C.HEADWEAR) : '', 
       fullBody: Math.random() > 0.8 ? getRandom(C.FULL_BODY) : '',
-      upperBody: getRandom(C.UPPER_BODY), lowerBody: getRandom(C.LOWER_BODY), footwear: getRandom(C.FOOTWEAR),
-      heldItem: Math.random() > 0.6 ? getRandom(C.HELD_ITEMS) : '',
-      classExtras: Math.random() > 0.6 ? getRandom(C.CLASS_EXTRAS) : '',
-      outfitColors: [],
+      upperBody: getRandom(C.UPPER_BODY), 
+      lowerBody: getRandom(C.LOWER_BODY), 
+      footwear: getRandom(C.FOOTWEAR),
+      heldItem: Math.random() > 0.5 ? getRandom(C.HELD_ITEMS) : '',
+      classExtras: Math.random() > 0.5 ? getRandom(C.CLASS_EXTRAS) : '',
+      outfitColors: Math.random() > 0.5 ? getRandomColors(2) : [],
 
-      style: getRandom(C.STYLES), setting: getRandom(C.SETTINGS), background: Math.random() > 0.8 ? getRandom(C.BACKGROUNDS) : '',
-      emotion: getRandom(C.EMOTIONS), pose: isVideo ? '' : getRandom(C.POSES_IMAGE), action: isVideo ? getRandom(C.ACTIONS_VIDEO) : '',
-      framing: getRandom(C.FRAMINGS), lighting: getRandom(C.LIGHTINGS), atmosphere: getRandom(C.ATMOSPHERES), aspectRatio: getRandom(C.ASPECT_RATIOS),
+      // Style
+      style: getRandom(C.STYLES), 
+      setting: getRandom(C.SETTINGS), 
+      background: Math.random() > 0.8 ? getRandom(C.BACKGROUNDS) : '',
+      emotion: getRandom(C.EMOTIONS), 
+      pose: isVideo ? '' : getRandom(C.POSES_IMAGE), 
+      action: isVideo ? getRandom(C.ACTIONS_VIDEO) : '',
+      framing: getRandom(C.FRAMINGS), 
+      lighting: getRandom(C.LIGHTINGS), 
+      atmosphere: getRandom(C.ATMOSPHERES), 
+      colors: Math.random() > 0.5 ? getRandomColors(3) : [],
+      aspectRatio: getRandom(C.ASPECT_RATIOS),
+      details: Math.random() > 0.5 ? "Glitch artifacts, glowing runes" : ""
     }));
-    help("Mutación aleatoria completada.", "Random mutation completed.");
+    help("Mutación aleatoria completa.", "Full random mutation completed.");
   };
 
   const mapOpts = (list: any[]) => list ? list.map(item => ({ label: lang === 'ES' ? item.es : item.en, value: item.value })) : [];
@@ -266,6 +323,7 @@ const App: React.FC = () => {
       
       <HistorySidebar isOpen={showHistory} onClose={() => setShowHistory(false)} history={history} onSelect={(item) => { setGeneratedData(item); if (item.modelParams) setParams(item.modelParams as any); }} onClear={clearHistory} lang={lang} />
       
+      {/* HEADER CONTROLS */}
       <div className="fixed top-4 right-4 z-50 flex gap-2">
          <button onClick={toggleCrt} className="bg-slate-900 border border-cyan-500 text-cyan-400 px-2 py-1 text-xs font-mono">CRT_FX</button>
          <button onClick={() => setShowHistory(true)} className="bg-slate-900 border border-amber-500 text-amber-400 px-2 py-1 text-xs font-mono">MEMORY</button>
@@ -274,8 +332,10 @@ const App: React.FC = () => {
 
       <div className="flex-grow max-w-[1400px] mx-auto px-4 py-8 md:py-16 relative z-10 w-full mt-12">
         <header className="mb-8 text-center relative">
-           <h1 className="text-4xl md:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-600 tracking-tighter mb-4 brand-font">NEOGENESIS v7.0</h1>
-           <div className="flex justify-center gap-4 flex-wrap">
+           <h1 className="text-4xl md:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-600 tracking-tighter mb-2 brand-font">NEOGENESIS v7.0</h1>
+           <a href="https://mistercuarter.es" target="_blank" rel="noopener noreferrer" className="inline-block text-cyan-500 font-mono text-sm tracking-[0.3em] hover:text-white transition-colors mb-6 border-b border-cyan-900 hover:border-cyan-400 pb-1">mistercuarter.es</a>
+
+           <div className="flex justify-center gap-4 flex-wrap mt-4">
               <button onClick={handleElitePreset} className="border border-cyan-500 text-cyan-400 px-6 py-2 uppercase text-sm tracking-widest hover:bg-cyan-900/30 transition-all font-bold">ELITE AGENT</button>
               <button onClick={handleRandomize} className="border border-purple-500 text-purple-400 px-6 py-2 uppercase text-sm tracking-widest hover:bg-purple-900/30 transition-all font-bold">GENOME CHAOS</button>
            </div>
@@ -612,6 +672,36 @@ const App: React.FC = () => {
       </div>
 
       <AssistantHud isActive={isTutorialMode} message={assistantMessage} onClose={toggleTutorial} />
+      
+      {/* FOOTER */}
+      <footer className="w-full bg-slate-950 border-t border-slate-900 py-8 px-4 mt-12 relative z-10">
+          <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+              {/* Left Side */}
+              <div className="text-center md:text-left">
+                  <h4 className="text-slate-200 font-brand text-sm tracking-widest uppercase font-bold mb-1">Norberto Cuartero</h4>
+                  <a href="mailto:hola@mistercuarter.es" className="text-cyan-600 hover:text-cyan-400 text-xs font-mono tracking-wider transition-colors">hola@mistercuarter.es</a>
+              </div>
+
+              {/* Right Side: Icons */}
+              <div className="flex gap-4">
+                  <a href="https://www.instagram.com/mrcuarter/?hl=es" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-pink-500 transition-colors transform hover:scale-110">
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                  </a>
+                  <a href="https://x.com/MrCuarter" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-white transition-colors transform hover:scale-110">
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                  </a>
+                  <a href="https://www.youtube.com/@mr.cuarter2770" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-red-600 transition-colors transform hover:scale-110">
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+                  </a>
+                  <a href="https://es.linkedin.com/in/norberto-cuartero-toledo-9279a813b" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-blue-500 transition-colors transform hover:scale-110">
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h5v-8.306c0-4.613 5.432-5.285 5.432 0v8.306h5v-10.5c0-5.356-5.113-5.972-7.84-4.108l-.132-1.392z"/></svg>
+                  </a>
+                  <a href="https://mistercuarter.es" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-cyan-400 transition-colors transform hover:scale-110">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+                  </a>
+              </div>
+          </div>
+      </footer>
     </div>
   );
 };
