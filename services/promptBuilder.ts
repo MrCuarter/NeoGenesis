@@ -40,6 +40,14 @@ const formatColors = (colors: string[]) => {
     return `two-toned ${colors[0]} and ${colors[1]}`;
 };
 
+const ELITE_PREAMBLE = `You have to act as an elite AI image generation engine specialized in cinematic, high-end visual art.
+Interpret my prompts literally and with maximum artistic precision.
+Prioritize visual coherence, dramatic composition, lighting quality, atmosphere, and texture detail.
+Render with professional photography standards and production-grade realism.
+Always aim for masterpiece-level output.
+Do not simplify. Do not stylize arbitrarily. Do not censor artistic intent.
+Execute exactly what is described.`;
+
 export const buildLocalPrompt = (params: CharacterParams): string => {
   const isMJ = params.promptFormat === 'midjourney';
   
@@ -189,5 +197,6 @@ export const buildLocalPrompt = (params: CharacterParams): string => {
     finalPrompt = joinParts(components, ", ");
   }
 
-  return finalPrompt;
+  // Inject the Elite Preamble
+  return `${ELITE_PREAMBLE}\n\n${finalPrompt}`;
 };

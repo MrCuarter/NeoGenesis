@@ -4,6 +4,15 @@ import { CharacterParams, GeneratedData, ExpressionEntry } from "../types";
 
 const modelId = "gemini-2.5-flash";
 
+// El bloque de texto que debe ir SIEMPRE al principio del prompt final (Elite Engine)
+const ELITE_PREAMBLE = `You have to act as an elite AI image generation engine specialized in cinematic, high-end visual art.
+Interpret my prompts literally and with maximum artistic precision.
+Prioritize visual coherence, dramatic composition, lighting quality, atmosphere, and texture detail.
+Render with professional photography standards and production-grade realism.
+Always aim for masterpiece-level output.
+Do not simplify. Do not stylize arbitrarily. Do not censor artistic intent.
+Execute exactly what is described.`;
+
 // Helper para obtener la instancia de IA de forma segura
 const getAI = () => {
   const apiKey = process.env.API_KEY;
@@ -14,41 +23,8 @@ const getAI = () => {
   return new GoogleGenAI({ apiKey });
 };
 
-export const generatePrompt = async (params: CharacterParams): Promise<GeneratedData> => {
-  let ai;
-  try {
-    ai = getAI();
-  } catch (e: any) {
-    console.error("Failed to initialize AI:", e);
-    throw new Error(e.message);
-  }
-  
-  const isVideo = params.mode === 'video';
-  const isMJ = params.promptFormat === 'midjourney';
-
-  const systemInstruction = `
-    Eres un Arquitecto de Prompts IA experto (Prompt Engineer).
-    Tu tarea es generar un prompt optimizado EN INGLÉS basado en los parámetros del usuario.
-    
-    MODO: ${params.mode.toUpperCase()}
-    FORMATO: ${params.promptFormat.toUpperCase()}
-
-    === REGLAS CRÍTICAS DE FORMATO ===
-    SI EL FORMATO ES "MIDJOURNEY":
-    1. Comienza con "/imagine prompt:".
-    2. Usa sintaxis de parámetros: añade "${params.aspectRatio} --v 6.0" al final.
-
-    SI EL FORMATO ES "GENERIC":
-    1. PROHIBIDO usar comandos que empiecen por "--".
-    2. Convierte el Aspect Ratio a lenguaje natural.
-    3. Usa palabras clave de calidad: "masterpiece, best quality, ultra-detailed".
-
-    === GESTIÓN DE COLORES (CRÍTICO) ===
-    - Si se especifican colores HEX, descríbelos con nombres artísticos (ej: #FF0000 -> "Crimson Red").
-    - Si hay 2 colores para un elemento (pelo, ojos, piel), descríbelo como "Two-toned [Color1] and [Color2]" o "Heterochromia".
-  `;
-
-  // Construcción de la descripción física compleja
+// --- HELPER: CONSTRUCCIÓN DE DATOS COMUNES ---
+const buildInputData = (params: CharacterParams, isVideo: boolean) => {
   const physParts = [];
   
   const hairC = params.hairColors?.join(" & ");
@@ -63,45 +39,86 @@ export const generatePrompt = async (params: CharacterParams): Promise<Generated
   else if (params.skinTone) physParts.push(`${params.skinTone}`);
 
   if (params.faceMarkings && params.faceMarkings !== 'None') physParts.push(`${params.faceMarkings}`);
-  if (params.denture) physParts.push(`with ${params.denture}`);
+  if (params.denture) physParts.push(`Dentures: ${params.denture}`);
   
-  // Construcción del Outfit
   const outfitParts = [];
   const outfitC = params.outfitColors?.join(" & ");
-  const colorContext = outfitC ? `(Color Palette: ${outfitC})` : "";
+  const colorContext = outfitC ? `(Palette: ${outfitC})` : "";
 
-  if (params.headwear && params.headwear !== 'None') outfitParts.push(`wearing ${params.headwear}`);
+  if (params.headwear && params.headwear !== 'None') outfitParts.push(`Headwear: ${params.headwear}`);
   
-  if (params.fullBody) outfitParts.push(`dressed in ${params.fullBody}`);
+  if (params.fullBody) outfitParts.push(`Attire: ${params.fullBody}`);
   else {
-      if (params.upperBody) outfitParts.push(`wearing ${params.upperBody}`);
-      if (params.lowerBody) outfitParts.push(`${params.lowerBody}`);
+      if (params.upperBody) outfitParts.push(`Upper: ${params.upperBody}`);
+      if (params.lowerBody) outfitParts.push(`Lower: ${params.lowerBody}`);
   }
   
-  if (params.classExtras) outfitParts.push(`equipped with ${params.classExtras}`);
-  if (params.footwear) outfitParts.push(`${params.footwear}`);
-  if (params.heldItem && params.heldItem !== 'Nothing') outfitParts.push(`holding ${params.heldItem}`);
+  if (params.classExtras) outfitParts.push(`Accessory: ${params.classExtras}`);
+  if (params.footwear) outfitParts.push(`Shoes: ${params.footwear}`);
+  if (params.heldItem && params.heldItem !== 'Nothing') outfitParts.push(`Holding: ${params.heldItem}`);
 
   let roleDesc = params.role;
   if (params.secondaryRole) roleDesc += ` / ${params.secondaryRole}`;
-  
-  const userPrompt = `
-    Genera un prompt con estos datos:
-    - Sujeto: ${params.race} ${roleDesc} (${params.classCategory})
-    - Género: ${params.gender}, Edad: ${params.age}, Cuerpo: ${params.bodyType}
-    - RASGOS DETALLADOS: ${physParts.join(", ")}
-    - EQUIPAMIENTO: ${outfitParts.join(", ")} ${colorContext}
-    - Emoción: ${params.emotion}
-    - Acción/Pose: ${isVideo ? params.action : params.pose}
-    - Estilo: ${params.style}
-    - Entorno: ${params.setting} (${params.atmosphere}, ${params.lighting})
-    - Fondo: ${params.background}
-    - Colores Ambiente: ${params.colors.join(", ")}
-    - Detalles extra: ${params.details}
-    - Formato: ${params.aspectRatio}
-    
-    Output JSON.
+
+  return `
+    INPUT DATA:
+    - Subject: ${params.race} ${roleDesc} (${params.classCategory})
+    - Stats: ${params.gender}, ${params.age}, ${params.bodyType}
+    - Physical: ${physParts.join(", ")}
+    - Gear: ${outfitParts.join(", ")} ${colorContext}
+    - Mood: ${params.emotion}
+    - Action: ${isVideo ? params.action : params.pose}
+    - Framing: ${params.framing}
+    - Style: ${params.style}
+    - Location: ${params.setting}
+    - Ambience: ${params.atmosphere}, ${params.lighting}
+    - Colors: ${params.colors.join(", ")}
+    - Extra: ${params.details}
+    - Aspect Ratio: ${params.aspectRatio}
+    - Target Format: ${params.promptFormat === 'midjourney' ? 'Midjourney v6' : 'Generic/Stable Diffusion'}
   `;
+};
+
+export const generatePrompt = async (params: CharacterParams): Promise<GeneratedData> => {
+  let ai;
+  try {
+    ai = getAI();
+  } catch (e: any) {
+    console.error("Failed to initialize AI:", e);
+    throw new Error(e.message);
+  }
+  
+  const isVideo = params.mode === 'video';
+  const isMJ = params.promptFormat === 'midjourney';
+  const inputData = buildInputData(params, isVideo);
+
+  const systemInstruction = `
+    You have to act as a senior cinematic prompt engineer for high-end image generation.
+    Your task is to enhance the prompt by adding relevant details that strengthen the existing concept, character, and visual impact.
+    You are allowed to enrich the description with elements that logically belong to the character, setting, or art style.
+    You are NOT allowed to change, remove, or contradict any existing concept.
+    Do NOT replace the subject, art style, environment, camera framing, or mood.
+    Do NOT introduce unrelated themes.
+    All additions must reinforce the original idea.
+    Improve structure, clarity, artistic language, lighting, texture, and composition.
+    Preserve the core identity of the prompt at all times.
+    Return only the improved prompt.
+
+    ### CRITICAL INSTRUCTION: CAMERA FRAMING
+    You MUST strictly adhere to the provided 'Framing' (Camera Shot).
+    - If input says "Close-up", the prompt MUST describe a Close-up.
+    - If input says "Full Body", you MUST ensure the full character is visible.
+    - Do NOT change the shot type for "artistic reasons". The user's choice is final.
+
+    ### FORMATTING RULES
+    1. Output MUST be valid JSON.
+    2. ${isMJ ? 
+       'FORMAT FOR MIDJOURNEY: Start with "/imagine prompt:", include descriptive tags, and END with parameters (e.g., --v 6.0 --ar 16:9).' : 
+       'FORMAT FOR GENERIC AI: Use dense, descriptive, high-quality tags separated by commas. No /imagine command. DO NOT USE --ar parameters.'}
+    3. Do NOT include the "Elite AI" preamble in the JSON output, I will add it programmatically.
+  `;
+
+  const userPrompt = `${inputData}\n\nOutput JSON only with keys: "prompt", "negativePrompt".`;
 
   try {
     const response = await ai.models.generateContent({
@@ -123,7 +140,13 @@ export const generatePrompt = async (params: CharacterParams): Promise<Generated
 
     const jsonText = response.text;
     if (!jsonText) throw new Error("No response text from Gemini");
-    return JSON.parse(jsonText) as GeneratedData;
+    
+    const result = JSON.parse(jsonText) as GeneratedData;
+
+    // --- CRITICAL: INJECT ELITE PREAMBLE ---
+    result.prompt = `${ELITE_PREAMBLE}\n\n${result.prompt}`;
+
+    return result;
 
   } catch (error) {
     console.error("Error generating prompt:", error);
@@ -132,7 +155,7 @@ export const generatePrompt = async (params: CharacterParams): Promise<Generated
 };
 
 /**
- * PROTOCOLO PSYCHE 6.0: 7 Hojas Maestras con SAFETY MARGINS.
+ * PROTOCOLO PSYCHE 7.1: Strict Consistency Enforcement & Clean Formatting
  */
 export const generateExpressionSheet = async (params: CharacterParams): Promise<ExpressionEntry[]> => {
   let ai;
@@ -144,40 +167,45 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
   }
 
   const isMJ = params.promptFormat === 'midjourney';
+  const inputData = buildInputData(params, false); 
   
-  let roleDesc = params.role;
-  if (params.secondaryRole) roleDesc += ` / ${params.secondaryRole}`;
-
-  const hairC = params.hairColors?.join(" and ");
-  const outfitC = params.outfitColors?.join(" and ");
+  // Extraemos rasgos clave para forzar la consistencia
+  const coreIdentity = `${params.race} ${params.role} ${params.gender}`;
+  const appearance = `${params.hairColors?.join("&")} ${params.hairStyle}, ${params.skinTone}, ${params.outfitColors?.join("&")} outfit`;
 
   const systemInstruction = `
-    Eres un Director de Arte de Concept Art (Protocolo PSYCHE v6.0).
-    Tu objetivo es crear un "Character Design Kit" de 7 Prompts EN INGLÉS.
-    
-    ESTRATEGIA VISUAL:
-    1. ESTILO: ${params.style}.
-    2. SUJETO: ${params.race} ${roleDesc}, ${params.gender}.
-    3. DETALLES: ${hairC} ${params.hairStyle}, ${params.eyeFeature}.
-    4. ROPA: ${params.fullBody || params.upperBody}, Colors: ${outfitC}.
-    5. CLASS ITEM: ${params.classExtras}.
-    
-    REGULACIÓN DE ESPACIO (SAFETY MARGIN):
-    Es CRÍTICO que las figuras NO SE TOQUEN NI SE SOLAPEN en los sheets.
-    - Usa keywords: "distinct separation", "wide spacing", "isolated figures", "grid layout".
-    - Negative Prompt Implícito: "overlapping, touching, merged bodies".
+    You are the "Director of Character Consistency" for a Concept Art studio.
+    Your goal is to generate a JSON Array of 7 Prompts based on the Input Data.
 
-    LOS 7 PROMPTS MAESTROS:
-    1. "ARCHITECTURE VIEW": Triptych (Front, Side, Back). Wide spacing. A-Pose.
-    2. "CINEMATIC NARRATIVE": Bust shot. Cinematic lighting.
-    3. "ACTION POSES A": 3 Dynamic Poses (Fighting/Confident). Distinct separation.
-    4. "ACTION POSES B": 3 Interaction/Movement Poses. Distinct separation.
-    5. "EXPRESSIONS GRID": 2x3 grid of facial expressions.
-    6. "RPG TOKEN": Head inside decorative border. Square format.
-    7. "VICTORY POSE": Full body dynamic victory pose. No background scenery.
+    ### STRATEGY: ABSOLUTE CONSISTENCY
+    
+    **PROMPT 1: THE ANCHOR ("Personaje potenciado con IA")**
+    - This is the Masterpiece. Use the exact Lighting, Framing, and Style requested.
+    - This defines the Source of Truth for the character's look.
+
+    **PROMPTS 2-7: THE VARIATIONS (Consistency Mode)**
+    - **CRITICAL:** In EVERY single prompt from 2 to 7, you MUST explicitly describe the character again to ensure the AI doesn't hallucinate a new person.
+    - **MANDATORY INJECTION:** You must include this phrase in prompts 2-7: "Character consistency: ${coreIdentity}, ${appearance}".
+    - Do NOT rely on "same character as above". You must describe them again.
+    - Change only the pose, framing, and action suitable for the specific sheet type.
+    - **SAFETY MARGINS:** For sheets (Arch, Action, Expressions), ensure figures do NOT touch. Use "Solid White Background".
+
+    ### FORMATTING RULES (STRICT)
+    ${isMJ ? 
+      '- Start prompts with "/imagine prompt:"\n- End with parameters (e.g. --v 6.0 --ar X:Y)' : 
+      '- Use descriptive natural language tags.\n- **FORBIDDEN:** Do NOT use "--ar" parameters in Generic Mode. Instead, use words like "Vertical format", "Square format", "Wide format".'}
+
+    ### THE 7 REQUIRED PROMPTS:
+    1. **"Personaje potenciado con IA"**: The main artistic shot.
+    2. **"ARCHITECTURE TRIPTYCH"**: Front view, Side view, Back view. T-Pose or A-Pose. Wide spacing. Solid White BG.
+    3. **"ACTION DYNAMICS"**: 3 distinct combat/movement poses. Non-overlapping. Solid White BG.
+    4. **"EXPRESSION GRID"**: 2x3 grid of facial emotions. Focus on face. Solid White BG.
+    5. **"RPG TOKEN"**: Circular or Square framing focused on the head/bust. High contrast.
+    6. **"GEAR KNOLLING"**: The character's items (Weapons, Accessories) laid out on a flat surface. Top-down view.
+    7. **"VICTORY POSE"**: A full-body heroic pose showing the character in their prime.
   `;
 
-  const userPrompt = `Genera el Kit (7 Prompts) para ${roleDesc}. Include physical traits: ${hairC} ${params.hairStyle}, ${params.eyeFeature}.`;
+  const userPrompt = `${inputData}\n\nGenerate the 7-Prompt Design Kit. Output JSON Array.`;
 
   const responseSchema: Schema = {
     type: Type.ARRAY,
@@ -204,7 +232,17 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
 
     const jsonText = response.text;
     if (!jsonText) throw new Error("No response text");
-    return JSON.parse(jsonText) as ExpressionEntry[];
+    
+    const sheet = JSON.parse(jsonText) as ExpressionEntry[];
+
+    // --- CRITICAL: INJECT ELITE PREAMBLE TO THE FIRST PROMPT ONLY ---
+    if (sheet.length > 0) {
+        // Force correct label
+        sheet[0].label = "Personaje potenciado con IA";
+        sheet[0].prompt = `${ELITE_PREAMBLE}\n\n${sheet[0].prompt}`;
+    }
+
+    return sheet;
 
   } catch (error) {
     console.error("Error generating sheets:", error);
@@ -229,7 +267,7 @@ export const generateInventoryPrompt = async (params: CharacterParams): Promise<
         Items clave: ${params.heldItem}, ${params.headwear}, ${params.footwear}, ${params.classExtras}.
         Paleta de items: ${outfitC}.
         Fondo: Solid White. Objetos separados.
-        Format: ${isMJ ? '/imagine prompt: ... --ar 3:2' : 'Detailed description without --ar'}.
+        Format: ${isMJ ? '/imagine prompt: ... --ar 3:2' : 'Detailed description without --ar parameters'}.
         OUTPUT ENGLISH.
     `;
     

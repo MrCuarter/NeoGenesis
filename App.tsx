@@ -409,7 +409,7 @@ const App: React.FC = () => {
 
            <div className="mt-6 flex flex-col md:flex-row gap-4">
                <button onClick={handleGenerate} className="flex-1 bg-cyan-600/20 border border-cyan-500 text-cyan-400 py-4 font-bold tracking-[0.2em] hover:bg-cyan-500 hover:text-black transition-all rounded-sm uppercase flex items-center justify-center gap-2 group">
-                  <span className="group-hover:translate-x-1 transition-transform">Generate Image</span>
+                  <span className="group-hover:translate-x-1 transition-transform">Mejorar descripción con IA</span>
                </button>
                <button onClick={handleGenerateInventory} className="flex-1 bg-emerald-600/20 border border-emerald-500 text-emerald-400 py-4 font-bold tracking-[0.2em] hover:bg-emerald-500 hover:text-black transition-all rounded-sm uppercase flex items-center justify-center gap-2 group">
                    <span className="group-hover:translate-x-1 transition-transform">Generate Inventory</span>
