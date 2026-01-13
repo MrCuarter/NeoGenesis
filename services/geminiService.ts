@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { CharacterParams, GeneratedData, ExpressionEntry, LoreData, Language } from "../types";
 
@@ -13,14 +12,43 @@ Always aim for masterpiece-level output.
 Do not simplify. Do not stylize arbitrarily. Do not censor artistic intent.
 Execute exactly what is described.`;
 
-// Helper para obtener la instancia de IA de forma segura
-const getAI = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === "") {
-    console.error("DEBUG: La API Key es inválida.");
-    throw new Error("API Key no configurada.");
+// --- SISTEMA DE GESTIÓN DE LLAVES MÚLTIPLES ---
+// Recopilamos todas las llaves disponibles en el entorno
+const API_KEYS = [
+  process.env.API_KEY,
+  process.env.API_KEY_SECONDARY,
+  process.env.API_KEY_TERTIARY
+].filter((key): key is string => !!key && key.trim() !== "");
+
+if (API_KEYS.length === 0) {
+  console.error("CRITICAL: No API Keys found.");
+}
+
+/**
+ * Ejecuta una operación de IA con sistema de Fallback.
+ * Si la llave 1 falla (por cuota o error), intenta con la 2, y luego con la 3.
+ */
+const executeWithFallback = async <T>(
+  operation: (ai: GoogleGenAI) => Promise<T>
+): Promise<T> => {
+  let lastError: any = null;
+
+  for (let i = 0; i < API_KEYS.length; i++) {
+    const currentKey = API_KEYS[i];
+    try {
+      const ai = new GoogleGenAI({ apiKey: currentKey });
+      // Intentamos la operación
+      return await operation(ai);
+    } catch (error: any) {
+      console.warn(`[Gemini Service] Fallo con API Key ${i + 1}/${API_KEYS.length}. Intentando siguiente...`, error);
+      lastError = error;
+      // Si es el último intento, el bucle termina y lanzamos el error abajo
+    }
   }
-  return new GoogleGenAI({ apiKey });
+
+  // Si llegamos aquí, todas las llaves fallaron
+  console.error("Todas las API Keys han fallado o están saturadas.");
+  throw lastError || new Error("Servicio de IA no disponible (Todas las credenciales fallaron).");
 };
 
 // --- HELPER: CONSTRUCCIÓN DE DATOS COMUNES ---
@@ -80,14 +108,6 @@ const buildInputData = (params: CharacterParams, isVideo: boolean) => {
 };
 
 export const generatePrompt = async (params: CharacterParams): Promise<GeneratedData> => {
-  let ai;
-  try {
-    ai = getAI();
-  } catch (e: any) {
-    console.error("Failed to initialize AI:", e);
-    throw new Error(e.message);
-  }
-  
   const isVideo = params.mode === 'video';
   const isMJ = params.promptFormat === 'midjourney';
   const inputData = buildInputData(params, isVideo);
@@ -120,7 +140,8 @@ export const generatePrompt = async (params: CharacterParams): Promise<Generated
 
   const userPrompt = `${inputData}\n\nOutput JSON only with keys: "prompt", "negativePrompt".`;
 
-  try {
+  // Usamos el wrapper de fallback
+  return executeWithFallback(async (ai) => {
     const response = await ai.models.generateContent({
       model: modelId,
       contents: userPrompt,
@@ -142,33 +163,17 @@ export const generatePrompt = async (params: CharacterParams): Promise<Generated
     if (!jsonText) throw new Error("No response text from Gemini");
     
     const result = JSON.parse(jsonText) as GeneratedData;
-
-    // --- CRITICAL: INJECT ELITE PREAMBLE ---
     result.prompt = `${ELITE_PREAMBLE}\n\n${result.prompt}`;
-
     return result;
-
-  } catch (error) {
-    console.error("Error generating prompt:", error);
-    throw error;
-  }
+  });
 };
 
 /**
  * PROTOCOLO PSYCHE 7.4: Master Anchor & Variations
  */
 export const generateExpressionSheet = async (params: CharacterParams): Promise<ExpressionEntry[]> => {
-  let ai;
-  try {
-    ai = getAI();
-  } catch (e: any) {
-    console.error("Failed to initialize AI:", e);
-    throw new Error(e.message);
-  }
-
   // --- STEP 1: GENERATE THE MASTER ANCHOR ---
-  // We call generatePrompt first to ensure the exact same logic as the "Mejorar Descripción" button.
-  // This guarantees consistency.
+  // Reutilizamos generatePrompt que ya tiene el fallback integrado
   let anchorPrompt = "";
   try {
       const anchorData = await generatePrompt(params);
@@ -225,26 +230,25 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
     Generate the 7-Prompt Design Kit. Output JSON Array.
   `;
 
-  const responseSchema: Schema = {
-    type: Type.ARRAY,
-    items: {
-      type: Type.OBJECT,
-      properties: {
-        label: { type: Type.STRING },
-        prompt: { type: Type.STRING }
-      },
-      required: ["label", "prompt"]
-    }
-  };
-
-  try {
+  // Usamos el wrapper de fallback también para el paso 2
+  return executeWithFallback(async (ai) => {
     const response = await ai.models.generateContent({
       model: modelId,
       contents: userPrompt,
       config: {
         systemInstruction: systemInstruction,
         responseMimeType: "application/json",
-        responseSchema: responseSchema,
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              label: { type: Type.STRING },
+              prompt: { type: Type.STRING }
+            },
+            required: ["label", "prompt"]
+          }
+        },
       },
     });
 
@@ -253,32 +257,18 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
     
     const sheet = JSON.parse(jsonText) as ExpressionEntry[];
 
-    // --- CRITICAL: FORCE OVERWRITE THE FIRST PROMPT ---
-    // Even if Gemini tried to summarize it, we overwrite it with the real Anchor Prompt
-    // to ensure 100% parity with the single generation button.
     if (sheet.length > 0) {
         sheet[0].label = "Personaje potenciado con IA";
         sheet[0].prompt = anchorPrompt;
     }
 
     return sheet;
-
-  } catch (error) {
-    console.error("Error generating sheets:", error);
-    throw error;
-  }
+  });
 };
 
 export const generateInventoryPrompt = async (params: CharacterParams): Promise<GeneratedData> => {
-    let ai;
-    try {
-        ai = getAI();
-    } catch (e: any) {
-        throw new Error(e.message);
-    }
     const isMJ = params.promptFormat === 'midjourney';
     
-    // Contexto de coherencia (Igual que en Psyche Protocol)
     const coreIdentity = `${params.race} ${params.role} ${params.gender}`;
     const appearance = `${params.hairColors?.join("&")} ${params.hairStyle}, ${params.skinTone}, ${params.outfitColors?.join("&")} outfit`;
     const outfitC = params.outfitColors?.join(" and ");
@@ -309,40 +299,35 @@ export const generateInventoryPrompt = async (params: CharacterParams): Promise<
         Return JSON with "prompt" and "negativePrompt".
     `;
     
-    const response = await ai.models.generateContent({
-        model: modelId,
-        contents: "Generate inventory asset prompt.",
-        config: { 
-            systemInstruction, 
-            responseMimeType: "application/json", 
-            responseSchema: { 
-                type: Type.OBJECT, 
-                properties: { 
-                    prompt: {type: Type.STRING}, 
-                    negativePrompt: {type:Type.STRING} 
-                },
-                required: ["prompt", "negativePrompt"]
-            } 
-        }
-    });
-    
-    const jsonText = response.text;
-    if (!jsonText) throw new Error("No response text");
+    return executeWithFallback(async (ai) => {
+      const response = await ai.models.generateContent({
+          model: modelId,
+          contents: "Generate inventory asset prompt.",
+          config: { 
+              systemInstruction, 
+              responseMimeType: "application/json", 
+              responseSchema: { 
+                  type: Type.OBJECT, 
+                  properties: { 
+                      prompt: {type: Type.STRING}, 
+                      negativePrompt: {type:Type.STRING} 
+                  },
+                  required: ["prompt", "negativePrompt"]
+              } 
+          }
+      });
+      
+      const jsonText = response.text;
+      if (!jsonText) throw new Error("No response text");
 
-    return JSON.parse(jsonText) as GeneratedData;
+      return JSON.parse(jsonText) as GeneratedData;
+    });
 };
 
 /**
  * LORE ENGINE: Generación de Narrativa
  */
 export const generateLore = async (params: CharacterParams, lang: Language): Promise<LoreData> => {
-  let ai;
-  try {
-    ai = getAI();
-  } catch (e: any) {
-    throw new Error(e.message);
-  }
-
   const inputData = buildInputData(params, false);
 
   const languageInstruction = lang === 'ES' 
@@ -366,28 +351,26 @@ export const generateLore = async (params: CharacterParams, lang: Language): Pro
     Output strict JSON.
   `;
 
-  const responseSchema: Schema = {
-    type: Type.OBJECT,
-    properties: {
-      name: { type: Type.STRING },
-      epithet: { type: Type.STRING },
-      alignment: { type: Type.STRING },
-      personality: { type: Type.ARRAY, items: { type: Type.STRING } },
-      backstory: { type: Type.STRING },
-      motivation: { type: Type.STRING },
-      fear: { type: Type.STRING }
-    },
-    required: ["name", "epithet", "backstory", "personality", "motivation", "fear", "alignment"]
-  };
-
-  try {
+  return executeWithFallback(async (ai) => {
     const response = await ai.models.generateContent({
       model: modelId,
       contents: `${inputData}\n\nGenerate Character Biography & Lore.`,
       config: {
         systemInstruction,
         responseMimeType: "application/json",
-        responseSchema,
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            name: { type: Type.STRING },
+            epithet: { type: Type.STRING },
+            alignment: { type: Type.STRING },
+            personality: { type: Type.ARRAY, items: { type: Type.STRING } },
+            backstory: { type: Type.STRING },
+            motivation: { type: Type.STRING },
+            fear: { type: Type.STRING }
+          },
+          required: ["name", "epithet", "backstory", "personality", "motivation", "fear", "alignment"]
+        },
       },
     });
 
@@ -395,9 +378,5 @@ export const generateLore = async (params: CharacterParams, lang: Language): Pro
     if (!jsonText) throw new Error("No lore generated");
 
     return JSON.parse(jsonText) as LoreData;
-
-  } catch (error) {
-    console.error("Lore generation failed:", error);
-    throw error;
-  }
+  });
 };

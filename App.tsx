@@ -8,6 +8,7 @@ import { TerminalOutput } from './components/TerminalOutput';
 import { QuickDesignWizard } from './components/QuickDesignWizard';
 import { AssistantHud } from './components/AssistantHud';
 import { HistorySidebar } from './components/HistorySidebar'; 
+import { Logo } from './components/Logo'; // Import Logo
 import { generatePrompt, generateExpressionSheet, generateInventoryPrompt, generateLore } from './services/geminiService';
 import { buildLocalPrompt } from './services/promptBuilder'; 
 import { CharacterParams, GeneratedData, LoadingState, Language, ExpressionEntry, LoreData } from './types';
@@ -364,17 +365,61 @@ const App: React.FC = () => {
       
       <HistorySidebar isOpen={showHistory} onClose={() => setShowHistory(false)} history={history} onSelect={(item) => { setGeneratedData(item); if (item.modelParams) setParams(item.modelParams as any); }} onClear={clearHistory} lang={lang} />
       
-      {/* HEADER CONTROLS */}
-      <div className="fixed top-4 right-4 z-50 flex gap-2">
-         <button onClick={toggleCrt} className="bg-slate-900 border border-cyan-500 text-cyan-400 px-2 py-1 text-xs font-mono">CRT_FX</button>
-         <button onClick={() => setShowHistory(true)} className="bg-slate-900 border border-amber-500 text-amber-400 px-2 py-1 text-xs font-mono">MEMORY</button>
-         <button onClick={() => setLang(l => l === 'ES' ? 'EN' : 'ES')} className="bg-slate-900 border border-slate-600 text-white px-2 py-1 text-xs font-mono">{lang}</button>
-      </div>
+      {/* HEADER NAVIGATION BAR */}
+      <nav className="fixed top-0 left-0 w-full z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 h-16 flex items-center justify-between px-4 lg:px-6 shadow-2xl shadow-cyan-900/10">
+          
+          {/* Left: Logo & Links */}
+          <div className="flex items-center gap-4 lg:gap-8">
+             {/* Brand */}
+             <div className="flex items-center gap-3">
+                <Logo className="w-8 h-8" />
+                <span className="font-brand font-bold text-slate-100 tracking-wider hidden sm:block text-lg">NEOGENESIS</span>
+             </div>
 
-      <div className="flex-grow max-w-[1400px] mx-auto px-4 py-8 md:py-16 relative z-10 w-full mt-12">
+             {/* External Links (Visible on Large Screens) */}
+             <div className="hidden lg:flex items-center gap-3">
+                 {/* WEB */}
+                 <a href="https://mistercuarter.es" target="_blank" rel="noopener noreferrer" 
+                    className="group flex items-center gap-2 px-3 py-1.5 rounded-sm border bg-slate-900/50 border-cyan-900/30 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/50 hover:shadow-[0_0_10px_rgba(34,211,238,0.2)] transition-all duration-300">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                    <span className="text-[10px] font-bold font-mono uppercase tracking-wider">WEB</span>
+                 </a>
+                 
+                 {/* LAB */}
+                 <a href="https://mistercuarter.es/laboratoria" target="_blank" rel="noopener noreferrer" 
+                    className="group flex items-center gap-2 px-3 py-1.5 rounded-sm border bg-slate-900/50 border-purple-900/30 text-slate-400 hover:text-purple-400 hover:border-purple-500/50 hover:shadow-[0_0_10px_rgba(168,85,247,0.2)] transition-all duration-300">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+                    <span className="text-[10px] font-bold font-mono uppercase tracking-wider">Lab</span>
+                 </a>
+
+                 {/* AtlasCore */}
+                 <a href="https://atlas.mistercuarter.es" target="_blank" rel="noopener noreferrer" 
+                    className="group flex items-center gap-2 px-3 py-1.5 rounded-sm border bg-slate-900/50 border-green-900/30 text-slate-400 hover:text-green-400 hover:border-green-500/50 hover:shadow-[0_0_10px_rgba(34,197,94,0.2)] transition-all duration-300">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                    <span className="text-[10px] font-bold font-mono uppercase tracking-wider">AtlasCore</span>
+                 </a>
+
+                 {/* Neural Quiz */}
+                 <a href="https://neuralquiz.mistercuarter.es" target="_blank" rel="noopener noreferrer" 
+                    className="group flex items-center gap-2 px-3 py-1.5 rounded-sm border bg-slate-900/50 border-rose-900/30 text-slate-400 hover:text-rose-400 hover:border-rose-500/50 hover:shadow-[0_0_10px_rgba(244,63,94,0.2)] transition-all duration-300">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    <span className="text-[10px] font-bold font-mono uppercase tracking-wider">NEURAL QUIZ</span>
+                 </a>
+             </div>
+          </div>
+
+          {/* Right: Controls */}
+          <div className="flex items-center gap-2">
+               <button onClick={toggleCrt} className="bg-slate-900 border border-cyan-500 text-cyan-400 px-3 py-1.5 text-xs font-mono font-bold hover:bg-cyan-500 hover:text-black transition-colors uppercase">CRT_FX</button>
+               <button onClick={() => setShowHistory(true)} className="bg-slate-900 border border-amber-500 text-amber-400 px-3 py-1.5 text-xs font-mono font-bold hover:bg-amber-500 hover:text-black transition-colors uppercase">MEMORY</button>
+               <button onClick={() => setLang(l => l === 'ES' ? 'EN' : 'ES')} className="bg-slate-900 border border-slate-600 text-white px-3 py-1.5 text-xs font-mono font-bold hover:bg-slate-700 transition-colors">{lang}</button>
+          </div>
+      </nav>
+
+      <div className="flex-grow max-w-[1400px] mx-auto px-4 py-8 md:py-16 relative z-10 w-full mt-16">
         <header className="mb-8 text-center relative">
            <h1 className="text-4xl md:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-600 tracking-tighter mb-2 brand-font">NEOGENESIS v7.0</h1>
-           <a href="https://mistercuarter.es" target="_blank" rel="noopener noreferrer" className="inline-block text-cyan-500 font-mono text-sm tracking-[0.3em] hover:text-white transition-colors mb-6 border-b border-cyan-900 hover:border-cyan-400 pb-1">mistercuarter.es</a>
+           <p className="text-slate-400 font-mono text-xs tracking-[0.2em] mb-6">AI POWERED CHARACTER ARCHITECT</p>
 
            <div className="flex justify-center gap-4 flex-wrap mt-4">
               <button onClick={handleElitePreset} className="border border-cyan-500 text-cyan-400 px-6 py-2 uppercase text-sm tracking-widest hover:bg-cyan-900/30 transition-all font-bold flex items-center gap-2">

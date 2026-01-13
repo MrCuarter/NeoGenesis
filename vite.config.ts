@@ -7,9 +7,10 @@ export default defineConfig(({ mode }) => {
   // Fix: Cast process to any to avoid type error if @types/node is missing
   const env = loadEnv(mode, (process as any).cwd(), '');
   
-  // CRÍTICO: En Vercel, las variables están en process.env, no siempre en el objeto env de loadEnv.
-  // Buscamos primero en el proceso del sistema (Vercel), luego en .env, o devolvemos cadena vacía.
+  // CRÍTICO: En Vercel/Hostinger, las variables están en process.env, no siempre en el objeto env de loadEnv.
   const apiKey = process.env.API_KEY || env.API_KEY || "";
+  const apiKeySec = process.env.API_KEY_SECONDARY || env.API_KEY_SECONDARY || "";
+  const apiKeyTer = process.env.API_KEY_TERTIARY || env.API_KEY_TERTIARY || "";
 
   return {
     plugins: [react()],
@@ -18,8 +19,10 @@ export default defineConfig(({ mode }) => {
       emptyOutDir: true,
     },
     define: {
-      // Incrustamos la clave en el código final de forma segura
-      'process.env.API_KEY': JSON.stringify(apiKey)
+      // Incrustamos las claves en el código final de forma segura
+      'process.env.API_KEY': JSON.stringify(apiKey),
+      'process.env.API_KEY_SECONDARY': JSON.stringify(apiKeySec),
+      'process.env.API_KEY_TERTIARY': JSON.stringify(apiKeyTer)
     }
   };
 });
