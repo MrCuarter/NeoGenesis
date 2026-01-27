@@ -9,7 +9,7 @@ import { QuickDesignWizard } from './components/QuickDesignWizard';
 import { AssistantHud } from './components/AssistantHud';
 import { HistorySidebar } from './components/HistorySidebar'; 
 import { Logo } from './components/Logo'; // Import Logo
-import { generatePrompt, generateExpressionSheet, generateInventoryPrompt, generateLore } from './services/geminiService';
+import { generatePrompt, generateExpressionSheet, generateInventoryPrompt, generateLore, generateBattlePrompts } from './services/geminiService';
 import { buildLocalPrompt } from './services/promptBuilder'; 
 import { CharacterParams, GeneratedData, LoadingState, Language, ExpressionEntry, LoreData } from './types';
 import * as C from './constants';
@@ -52,13 +52,16 @@ const App: React.FC = () => {
   const [livePrompt, setLivePrompt] = useState<string>('');
   const [copiedLive, setCopiedLive] = useState(false);
   const [expressionSheet, setExpressionSheet] = useState<ExpressionEntry[] | null>(null);
+  const [battleSheet, setBattleSheet] = useState<ExpressionEntry[] | null>(null); // NEW: Battle Sheet State
   const [inventoryData, setInventoryData] = useState<GeneratedData | null>(null);
   const [loreData, setLoreData] = useState<LoreData | null>(null); 
   
   const [copiedInventory, setCopiedInventory] = useState(false);
   const [copiedLore, setCopiedLore] = useState(false);
   const [copiedMatrixIndex, setCopiedMatrixIndex] = useState<number | null>(null);
+  const [copiedBattleIndex, setCopiedBattleIndex] = useState<number | null>(null); // NEW
   const [copiedAllExpressions, setCopiedAllExpressions] = useState(false);
+  const [copiedAllBattle, setCopiedAllBattle] = useState(false); // NEW
   const [generatedData, setGeneratedData] = useState<GeneratedData | null>(null);
   const [loadingState, setLoadingState] = useState<LoadingState>(LoadingState.IDLE);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -132,11 +135,21 @@ const App: React.FC = () => {
 
   const handleGenerateExpressions = async () => {
       sfx.playClick(); if (!validateParams()) return;
-      setLoadingState(LoadingState.LOADING); setGeneratedData(null); setExpressionSheet(null); setInventoryData(null); setLoreData(null); setErrorMsg(null);
+      setLoadingState(LoadingState.LOADING); setGeneratedData(null); setExpressionSheet(null); setBattleSheet(null); setInventoryData(null); setLoreData(null); setErrorMsg(null);
       try {
           const sheet = await generateExpressionSheet(params);
           setExpressionSheet(sheet); setLoadingState(LoadingState.SUCCESS); sfx.playSuccess();
           setTimeout(() => document.getElementById('expression-section')?.scrollIntoView({ behavior: 'smooth' }), 100);
+      } catch (error) { console.error(error); setErrorMsg("API Error (Check Console)"); setLoadingState(LoadingState.ERROR); }
+  };
+
+  const handleGenerateBattle = async () => {
+      sfx.playClick(); if (!validateParams()) return;
+      setLoadingState(LoadingState.LOADING); setGeneratedData(null); setExpressionSheet(null); setBattleSheet(null); setInventoryData(null); setLoreData(null); setErrorMsg(null);
+      try {
+          const sheet = await generateBattlePrompts(params);
+          setBattleSheet(sheet); setLoadingState(LoadingState.SUCCESS); sfx.playSuccess();
+          setTimeout(() => document.getElementById('battle-section')?.scrollIntoView({ behavior: 'smooth' }), 100);
       } catch (error) { console.error(error); setErrorMsg("API Error (Check Console)"); setLoadingState(LoadingState.ERROR); }
   };
 
@@ -162,15 +175,20 @@ const App: React.FC = () => {
 
   const handleGenerate = async () => {
       sfx.playClick(); if (!validateParams()) return;
-      setLoadingState(LoadingState.LOADING); setErrorMsg(null); setGeneratedData(null); setExpressionSheet(null); setInventoryData(null); setLoreData(null);
+      setLoadingState(LoadingState.LOADING); setErrorMsg(null); setGeneratedData(null); setExpressionSheet(null); setBattleSheet(null); setInventoryData(null); setLoreData(null);
       try {
           const result = await generatePrompt(params);
           setGeneratedData(result); addToHistory(result); setLoadingState(LoadingState.SUCCESS); sfx.playSuccess();
       } catch (error) { setErrorMsg("API Error (Check Console)"); setLoadingState(LoadingState.ERROR); }
   };
 
-  const handleCopyMatrixItem = (text: string, index: number) => {
-    sfx.playClick(); navigator.clipboard.writeText(text); setCopiedMatrixIndex(index); setTimeout(() => setCopiedMatrixIndex(null), 1500);
+  const handleCopyMatrixItem = (text: string, index: number, isBattle: boolean = false) => {
+    sfx.playClick(); navigator.clipboard.writeText(text); 
+    if (isBattle) {
+        setCopiedBattleIndex(index); setTimeout(() => setCopiedBattleIndex(null), 1500);
+    } else {
+        setCopiedMatrixIndex(index); setTimeout(() => setCopiedMatrixIndex(null), 1500);
+    }
   };
 
   const handleCopyInventory = () => {
@@ -192,6 +210,14 @@ const App: React.FC = () => {
     let intro = isMJ ? "Here is a list of 5 Midjourney prompts (including Token and Victory)...\n\n" : "Act as an expert image generator. Create a Character Design Kit...\n\n";
     const body = expressionSheet.map((item, i) => `👇 IMAGE ${i + 1}: [${item.label}]\n${item.prompt}`).join("\n\n" + "-".repeat(40) + "\n\n");
     navigator.clipboard.writeText(intro + body); setCopiedAllExpressions(true); setTimeout(() => setCopiedAllExpressions(false), 2000);
+  };
+
+  const handleCopyAllBattle = () => {
+    sfx.playClick(); if (!battleSheet) return;
+    const isMJ = params.promptFormat === 'midjourney';
+    let intro = isMJ ? "Street Fighter Style Asset Prompts...\n\n" : "Game Asset Prompts...\n\n";
+    const body = battleSheet.map((item, i) => `👇 ASSET ${i + 1}: [${item.label}]\n${item.prompt}`).join("\n\n" + "-".repeat(40) + "\n\n");
+    navigator.clipboard.writeText(intro + body); setCopiedAllBattle(true); setTimeout(() => setCopiedAllBattle(false), 2000);
   };
   
   // HELPERS FOR RANDOMIZERS
@@ -595,17 +621,20 @@ const App: React.FC = () => {
                 <div className="font-mono text-sm text-slate-300 min-h-[50px] whitespace-pre-wrap">{livePrompt}</div>
            </div>
 
-           <div className="mt-6 flex flex-col xl:flex-row gap-4">
-               <button onClick={handleGenerate} className="flex-1 bg-cyan-600/20 border border-cyan-500 text-cyan-400 py-4 font-bold tracking-[0.2em] hover:bg-cyan-500 hover:text-black transition-all rounded-sm uppercase flex items-center justify-center gap-2 group">
+           <div className="mt-6 flex flex-col xl:flex-row gap-4 flex-wrap">
+               <button onClick={handleGenerate} className="flex-1 min-w-[200px] bg-cyan-600/20 border border-cyan-500 text-cyan-400 py-4 font-bold tracking-[0.2em] hover:bg-cyan-500 hover:text-black transition-all rounded-sm uppercase flex items-center justify-center gap-2 group">
                   <span className="group-hover:translate-x-1 transition-transform">Mejorar descripción con IA</span>
                </button>
-               <button onClick={handleGenerateInventory} className="flex-1 bg-emerald-600/20 border border-emerald-500 text-emerald-400 py-4 font-bold tracking-[0.2em] hover:bg-emerald-500 hover:text-black transition-all rounded-sm uppercase flex items-center justify-center gap-2 group">
+               <button onClick={handleGenerateInventory} className="flex-1 min-w-[200px] bg-emerald-600/20 border border-emerald-500 text-emerald-400 py-4 font-bold tracking-[0.2em] hover:bg-emerald-500 hover:text-black transition-all rounded-sm uppercase flex items-center justify-center gap-2 group">
                    <span className="group-hover:translate-x-1 transition-transform">Generate Inventory</span>
                </button>
-               <button onClick={handleGenerateExpressions} className="flex-1 bg-amber-600/20 border border-amber-500 text-amber-400 py-4 font-bold tracking-[0.2em] hover:bg-amber-500 hover:text-black transition-all rounded-sm uppercase flex items-center justify-center gap-2 group">
+               <button onClick={handleGenerateExpressions} className="flex-1 min-w-[200px] bg-amber-600/20 border border-amber-500 text-amber-400 py-4 font-bold tracking-[0.2em] hover:bg-amber-500 hover:text-black transition-all rounded-sm uppercase flex items-center justify-center gap-2 group">
                    <span className="group-hover:translate-x-1 transition-transform">Psyche Protocol (Sheets)</span>
                </button>
-               <button onClick={handleGenerateLore} className="flex-1 bg-violet-600/20 border border-violet-500 text-violet-400 py-4 font-bold tracking-[0.2em] hover:bg-violet-500 hover:text-black transition-all rounded-sm uppercase flex items-center justify-center gap-2 group">
+               <button onClick={handleGenerateBattle} className="flex-1 min-w-[200px] bg-rose-600/20 border border-rose-500 text-rose-400 py-4 font-bold tracking-[0.2em] hover:bg-rose-500 hover:text-black transition-all rounded-sm uppercase flex items-center justify-center gap-2 group">
+                   <span className="group-hover:translate-x-1 transition-transform">Battle Generator</span>
+               </button>
+               <button onClick={handleGenerateLore} className="flex-1 min-w-[200px] bg-violet-600/20 border border-violet-500 text-violet-400 py-4 font-bold tracking-[0.2em] hover:bg-violet-500 hover:text-black transition-all rounded-sm uppercase flex items-center justify-center gap-2 group">
                    <span className="group-hover:translate-x-1 transition-transform">Narrative Archives</span>
                </button>
            </div>
@@ -723,6 +752,39 @@ const App: React.FC = () => {
                                     {isFirst && <span className="text-[10px] text-cyan-500 font-bold uppercase tracking-wider animate-pulse">(Usa siempre este prompt primero)</span>}
                                 </div>
                                 <p className={`${textClass} border-l-2 ${isFirst ? 'border-cyan-500' : 'border-amber-900/50 group-hover:border-amber-500'} pl-4 transition-colors`}>{item.prompt}</p>
+                            </div>
+                         );
+                     })}
+                 </div>
+             </div>
+        )}
+
+        {/* BATTLE SHEET OUTPUT */}
+        {battleSheet && (
+             <div id="battle-section" className="mt-16 animate-slide-up">
+                 <div className="flex flex-col md:flex-row justify-between items-center mb-8 border-b border-rose-900/50 pb-4">
+                     <div>
+                        <h3 className="text-rose-400 font-brand text-3xl tracking-widest uppercase mb-1">Battle Generator</h3>
+                        <p className="text-slate-500 text-xs font-mono uppercase">Fighting Game Asset Kit</p>
+                     </div>
+                     <button onClick={handleCopyAllBattle} className="mt-4 md:mt-0 text-rose-400 border border-rose-500/50 px-6 py-3 hover:bg-rose-500 hover:text-black transition-colors font-bold text-xs uppercase tracking-widest">{copiedAllBattle ? 'ALL COPIED' : 'COPY ALL ASSETS'}</button>
+                 </div>
+                 
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     {battleSheet.map((item, i) => {
+                         const boxClass = "bg-slate-900/60 border border-rose-900/30 p-6 rounded-sm hover:border-rose-500/50";
+                         const textClass = "text-xs text-slate-300 font-mono leading-relaxed";
+                         const labelColor = "text-rose-500 border-rose-900/50 bg-rose-950/30";
+
+                         return (
+                            <div key={i} className={`${boxClass} transition-colors relative group ${i === 4 ? 'md:col-span-2' : ''}`}>
+                                <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => handleCopyMatrixItem(item.prompt, i, true)} className="text-white bg-black/50 hover:bg-white hover:text-black px-2 py-1 rounded text-xs uppercase font-bold tracking-wider">{copiedBattleIndex === i ? 'COPIED' : 'COPY'}</button>
+                                </div>
+                                <div className="mb-4 flex flex-wrap items-center gap-2">
+                                    <span className={`${labelColor} text-[10px] font-bold uppercase tracking-[0.2em] px-2 py-1 rounded border`}>{item.label}</span>
+                                </div>
+                                <p className={`${textClass} border-l-2 border-rose-900/50 group-hover:border-rose-500 pl-4 transition-colors`}>{item.prompt}</p>
                             </div>
                          );
                      })}

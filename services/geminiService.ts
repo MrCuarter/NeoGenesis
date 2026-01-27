@@ -266,6 +266,105 @@ export const generateExpressionSheet = async (params: CharacterParams): Promise<
   });
 };
 
+/**
+ * BATTLE GENERATOR: Assets para Juegos de Lucha
+ */
+export const generateBattlePrompts = async (params: CharacterParams): Promise<ExpressionEntry[]> => {
+  const isMJ = params.promptFormat === 'midjourney';
+  const inputData = buildInputData(params, false); 
+  
+  const systemInstruction = `
+    You are the "Lead Asset Designer" for a Triple-A Fighting Game (like Street Fighter 6, Tekken 8, Guilty Gear Strive).
+    Your task is to generate 5 Specific Prompts to create game assets for the character described in the input.
+
+    ### CRITICAL VISUAL RULES
+    1. **Character Consistency:** The character MUST maintain their appearance across all prompts.
+    2. **Backgrounds:** For Prompts 1, 2, 3, and 4, you MUST strictly specify: "Isolated on Solid White Background". No shadows, no environment.
+    3. **Perspective:** 
+       - Battle Sprites must be Side View (Facing Right).
+       - Select Screen is Front View.
+    4. **Safety Area:** Ensure characters are fully visible with padding around the edges.
+
+    ### THE 5 REQUIRED PROMPTS (JSON Array):
+
+    **1. "SELECT SCREEN STATES"** (Triptych Image)
+       - Generate 3 distinct full-body poses in one image (horizontal arrangement).
+       - Pose A: Arms crossed, confident, slightly turned, looking at camera (Intro).
+       - Pose B: Laughing or Victory Pose (Winning).
+       - Pose C: DEFEAT STATE. Clothes torn, armor damaged, bruised skin, expression is sad/angry/exhausted.
+       - Requirement: Solid White Background.
+
+    **2. "COMBAT SPRITES"** (Action Triptych)
+       - Generate 3 distinct fighting poses in one image.
+       - **Orientation:** All poses must be SIDE VIEW FACING RIGHT (Player 1 side).
+       - Pose A: Attacking (Punch, Kick, or Weapon strike).
+       - Pose B: Defensive Stance (Blocking or Dodge).
+       - Pose C: Special Move or Idle Stance.
+       - Requirement: Solid White Background.
+
+    **3. "VERSUS PORTRAITS"** (Versus Screen)
+       - Generate a horizontal diptych containing 2 distinct **Close-Up (Face/Bust)** portraits.
+       - **CRITICAL:** Do NOT use circular or rounded frames. Use standard rectangular cinematic framing.
+       - **LAYOUT:** Add significant empty white space (safety margin) between the two portraits to clearly separate the Winner from the Loser.
+       - Left Portrait: VICTORIOUS. Smiling, proud, clean, intense gaze.
+       - Right Portrait: DEFEATED. Heavily bruised, bleeding, swollen eye, looking down or in pain.
+       - Requirement: Solid White Background. High detail on facial expressions.
+
+    **4. "CHARACTER EMBLEM"** (Circular Badge)
+       - A high-quality **Circular Badge/Icon** featuring the character's face in the center.
+       - **CRITICAL:** NO TEXT. NO NUMBERS. NO LETTERS.
+       - **FRAME:** The circular border must be constructed from materials/aesthetics that match the character's Race and Style (e.g. if Elf use vines/gold, if Robot use metal/neon).
+       - Style: RPG Character Token / UI Badge.
+       - Requirement: Solid White Background.
+
+    **5. "FIGHTING STAGE"** (Background Only)
+       - The background location where the fight takes place.
+       - **CRITICAL:** NO CHARACTERS. The stage must be completely empty.
+       - **ASPECT RATIO:** Must be Cinematic 16:9 Widescreen.
+       - Perspective: Side view (2D Fighting Game Camera).
+       - Ambience: Match the character's 'Setting' and 'Atmosphere' params.
+
+    ### FORMATTING RULES
+    ${isMJ ? 
+      '- Start prompts with "/imagine prompt:"\n- End with parameters (e.g. --v 6.0 --ar 16:9 for sheets/stage, --ar 3:2 for portraits)' : 
+      '- Use descriptive natural language tags.\n- DO NOT use --ar parameters except for the Stage where you must describe it as "16:9 Widescreen".'}
+  `;
+
+  const userPrompt = `
+    RAW PARAMS:
+    ${inputData}
+
+    Generate the 5 Fighting Game Asset Prompts. Output JSON Array.
+  `;
+
+  return executeWithFallback(async (ai) => {
+    const response = await ai.models.generateContent({
+      model: modelId,
+      contents: userPrompt,
+      config: {
+        systemInstruction: systemInstruction,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              label: { type: Type.STRING },
+              prompt: { type: Type.STRING }
+            },
+            required: ["label", "prompt"]
+          }
+        },
+      },
+    });
+
+    const jsonText = response.text;
+    if (!jsonText) throw new Error("No response text");
+    
+    return JSON.parse(jsonText) as ExpressionEntry[];
+  });
+};
+
 export const generateInventoryPrompt = async (params: CharacterParams): Promise<GeneratedData> => {
     const isMJ = params.promptFormat === 'midjourney';
     
