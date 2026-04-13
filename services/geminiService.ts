@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { CharacterParams, GeneratedData, ExpressionEntry, LoreData, Language } from "../types";
 
-const modelId = "gemini-2.5-flash";
+const modelId = "gemini-2.0-flash";
 
 // El bloque de texto que debe ir SIEMPRE al principio del prompt final (Elite Engine)
 const ELITE_PREAMBLE = `You have to act as an elite AI image generation engine specialized in cinematic, high-end visual art.
