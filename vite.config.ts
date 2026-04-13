@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, (process as any).cwd(), '');
   
   // CRÍTICO: En Vercel/Hostinger, las variables están en process.env, no siempre en el objeto env de loadEnv.
+  const geminiApiKey = process.env.GEMINI_API_KEY || env.GEMINI_API_KEY || "";
   const apiKey = process.env.API_KEY || env.API_KEY || "";
   const apiKeySec = process.env.API_KEY_SECONDARY || env.API_KEY_SECONDARY || "";
   const apiKeyTer = process.env.API_KEY_TERTIARY || env.API_KEY_TERTIARY || "";
@@ -20,6 +21,7 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       // Incrustamos las claves en el código final de forma segura
+      'process.env.GEMINI_API_KEY': JSON.stringify(geminiApiKey),
       'process.env.API_KEY': JSON.stringify(apiKey),
       'process.env.API_KEY_SECONDARY': JSON.stringify(apiKeySec),
       'process.env.API_KEY_TERTIARY': JSON.stringify(apiKeyTer)

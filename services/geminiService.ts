@@ -15,6 +15,7 @@ Execute exactly what is described.`;
 // --- SISTEMA DE GESTIÓN DE LLAVES MÚLTIPLES ---
 // Recopilamos todas las llaves disponibles en el entorno
 const API_KEYS = [
+  process.env.GEMINI_API_KEY,
   process.env.API_KEY,
   process.env.API_KEY_SECONDARY,
   process.env.API_KEY_TERTIARY
